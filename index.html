@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="FinChat — Asisten keuangan pribadi berbasis AI. Catat pengeluaran dan pemasukan cukup dengan ngobrol natural.">
+  <meta name="theme-color" content="#7c6aff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FinChat">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="FinChat — Asisten Keuangan Pribadi">
+  <meta property="og:description" content="Catat keuangan cukup dengan ngobrol natural. Tidak perlu form yang ribet.">
+  <meta property="og:type" content="website">
+
+  <title>FinChat — Asisten Keuangan Pribadi</title>
+
+  <!-- Favicon SVG inline -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6aff'/><text y='.9em' font-size='72' x='12'>💬</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+  <!-- ── PIN Lock Screen ─────────────────────────────────── -->
+  <div id="pin-screen" class="pin-screen">
+    <div class="pin-box">
+      <div class="pin-logo">💬</div>
+      <div class="pin-title">FinChat</div>
+      <div class="pin-sub" id="pin-sub">Masukkan PIN untuk melanjutkan</div>
+      <div class="pin-dots" id="pin-dots">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pin-pad">
+        <button onclick="PIN.press('1')">1</button>
+        <button onclick="PIN.press('2')">2</button>
+        <button onclick="PIN.press('3')">3</button>
+        <button onclick="PIN.press('4')">4</button>
+        <button onclick="PIN.press('5')">5</button>
+        <button onclick="PIN.press('6')">6</button>
+        <button onclick="PIN.press('7')">7</button>
+        <button onclick="PIN.press('8')">8</button>
+        <button onclick="PIN.press('9')">9</button>
+        <button class="pin-empty"></button>
+        <button onclick="PIN.press('0')">0</button>
+        <button onclick="PIN.del()">⌫</button>
+      </div>
+      <button class="pin-skip" id="pin-skip" onclick="PIN.skip()">Lewati (tanpa PIN)</button>
+    </div>
+  </div>
+
+  <!-- ── App ─────────────────────────────────────────────── -->
+  <div id="app" style="display:none;height:100dvh;display:none;flex-direction:column">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">💬</div>
+        <div>
+          <div class="app-name">FinChat</div>
+          <div class="app-tagline">Asisten keuangan pribadimu</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-dot"><div class="dot"></div></div>
+        <span class="theme-icon" id="theme-icon">🌙</span>
+        <button class="theme-toggle" id="theme-toggle" onclick="Theme.toggle()" title="Ganti tema"></button>
+        <span id="token-counter" class="token-counter" onclick="TokenCounter.reset()" title="Klik untuk reset">🔢 0 token</span>
+        <div class="export-group">
+          <button class="export-btn" onclick="PIN.openSetup()" title="Atur PIN">🔐</button>
+          <button class="export-btn" onclick="Features.openDatePicker()" title="Input tanggal">📅</button>
+          <button class="export-btn" onclick="Features.openCategories()" title="Kategori">🏷️</button>
+          <button class="export-btn" onclick="Budget.openModal()" title="Budget">🎯</button>
+          <button class="export-btn" onclick="Features.openBackup()" title="Backup & Restore">💾</button>
+          <button class="export-btn excel" onclick="Exporter.toExcel()" title="Export Excel">📗 Excel</button>
+          <button class="export-btn pdf"   onclick="Exporter.toPDF()"   title="Export PDF">📄 PDF</button>
+        </div>
+        <button class="reset-btn" onclick="UI.confirmReset()" title="Reset">🗑</button>
+      </div>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="summary-bar">
+      <div class="summary-item clickable" onclick="Dashboard.open('income')">
+        <div class="s-label">Pemasukan ›</div>
+        <div class="s-value green" id="total-income">Rp 0</div>
+      </div>
+      <div class="summary-item clickable" onclick="Dashboard.open('expense')">
+        <div class="s-label">Pengeluaran ›</div>
+        <div class="s-value red" id="total-expense">Rp 0</div>
+      </div>
+      <div class="summary-item clickable" onclick="Dashboard.open('all')">
+        <div class="s-label">Saldo ›</div>
+        <div class="s-value amber" id="total-balance">Rp 0</div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-area" id="chat">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">💬</div>
+        <div class="empty-title">Halo! Aku FinChat</div>
+        <div class="empty-sub">Asisten keuangan pribadimu yang selalu siap mencatat</div>
+        <div class="empty-hints">
+          <div class="empty-hint" onclick="handleSendText('makan siang 45rb')">
+            <span class="hint-icon">🍜</span>
+            <div>
+              <div class="hint-label">Catat pengeluaran</div>
+              <div class="hint-example">"makan siang 45rb"</div>
+            </div>
+          </div>
+          <div class="empty-hint" onclick="handleSendText('gaji masuk 8 juta')">
+            <span class="hint-icon">💵</span>
+            <div>
+              <div class="hint-label">Catat pemasukan</div>
+              <div class="hint-example">"gaji masuk 8 juta"</div>
+            </div>
+          </div>
+          <div class="empty-hint" onclick="handleSendText('laporan')">
+            <span class="hint-icon">📊</span>
+            <div>
+              <div class="hint-label">Lihat laporan</div>
+              <div class="hint-example">ketik "laporan" atau "grafik"</div>
+            </div>
+          </div>
+          <div class="empty-hint" onclick="handleSendText('kasih saran hemat pengeluaran saya')">
+            <span class="hint-icon">🤖</span>
+            <div>
+              <div class="hint-label">Minta saran AI</div>
+              <div class="hint-example">"kasih saran hemat pengeluaran"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chips -->
+    <div class="chips-wrap">
+      <div class="chip" onclick="API.send('Gaji masuk bulan ini')">💵 Catat gaji</div>
+      <div class="chip" onclick="API.send('Catat pengeluaran makan siang')">🍜 Makan</div>
+      <div class="chip" onclick="API.send('Berapa saldo saya?')">💰 Saldo</div>
+      <div class="chip" onclick="API.send('Tampilkan grafik pengeluaran saya')">📊 Grafik</div>
+      <div class="chip" onclick="API.send('Laporan keuangan bulan ini')">📋 Laporan</div>
+      <div class="chip" onclick="API.send('Analisis dan beri saran keuangan saya')">🔍 Analisis</div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="input" placeholder='Contoh: "Makan siang 45rb" atau "Gaji masuk 8 juta"'
+          rows="1" onkeydown="handleKey(event)" oninput="Chat.autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="handleSend()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ───────────────────────────────────────────── -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ── Confirm Modal (Reset) ───────────────────────────── -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal">
+      <div style="font-size:36px;margin-bottom:12px">🗑️</div>
+      <div class="modal-title">Reset Data?</div>
+      <div class="modal-sub">Semua percakapan dan data keuangan akan dihapus permanen. Tidak bisa dibatalkan.</div>
+      <div class="modal-btns">
+        <button class="modal-btn cancel" onclick="UI.closeConfirm()">Batal</button>
+        <button class="modal-btn" style="border-color:rgba(248,113,113,0.4);color:var(--red)" onclick="UI.doReset()">Ya, Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Dashboard Modal ─────────────────────────────────── -->
+  <div class="modal-overlay" id="dashboard-modal">
+    <div class="dashboard">
+      <div class="db-header">
+        <div>
+          <div class="db-title" id="db-title">Semua Transaksi</div>
+          <div class="db-sub" id="db-sub">Riwayat lengkap</div>
+        </div>
+        <button class="db-close" onclick="Dashboard.close()">✕</button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="db-cards" id="db-cards"></div>
+
+      <!-- Filters -->
+      <div class="db-filters">
+        <div class="db-search-wrap">
+          <span class="db-search-icon">🔍</span>
+          <input type="text" id="db-search" class="db-search" placeholder="Cari transaksi..." oninput="Dashboard.render()">
+        </div>
+        <div class="db-period-wrap">
+          <button class="period-btn active" data-period="all"   onclick="Dashboard.setPeriod('all',this)">Semua</button>
+          <button class="period-btn" data-period="today"        onclick="Dashboard.setPeriod('today',this)">Hari ini</button>
+          <button class="period-btn" data-period="week"         onclick="Dashboard.setPeriod('week',this)">7 Hari</button>
+          <button class="period-btn" data-period="month"        onclick="Dashboard.setPeriod('month',this)">Bulan ini</button>
+        </div>
+        <select class="db-type-select" id="db-type" onchange="Dashboard.render()">
+          <option value="all">Semua Tipe</option>
+          <option value="income">Pemasukan</option>
+          <option value="expense">Pengeluaran</option>
+        </select>
+      </div>
+
+      <!-- Body: Chart (left) + Table (right) -->
+      <div class="db-body">
+
+        <!-- Chart Panel -->
+        <div class="db-chart-panel" id="db-chart-panel">
+          <div class="db-chart-label">📊 Per Kategori</div>
+          <div class="db-chart-canvas-wrap">
+            <canvas id="db-pie-chart"></canvas>
+          </div>
+          <div class="db-legend" id="db-legend"></div>
+        </div>
+
+        <!-- Table Panel -->
+        <div class="db-table-wrap">
+          <table class="db-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Keterangan</th>
+                <th>Kategori</th>
+                <th>Tipe</th>
+                <th>Jumlah</th>
+                <th>Tanggal</th>
+              </tr>
+            </thead>
+            <tbody id="db-tbody"></tbody>
+          </table>
+          <div class="db-empty" id="db-empty" style="display:none">
+            <div style="font-size:28px;margin-bottom:8px">🔍</div>
+            <div>Tidak ada transaksi ditemukan</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="db-footer" id="db-footer"></div>
+    </div>
+  </div>
+
+  <!-- ── Export Modal ────────────────────────────────────── -->
+  <div class="modal-overlay" id="export-modal">
+    <div class="modal">
+      <div class="modal-title">📤 Export Laporan</div>
+      <div class="modal-sub">Pilih format export laporan keuanganmu</div>
+      <div class="modal-btns">
+        <button class="modal-btn excel"   onclick="Exporter.toExcel()">📗 Excel</button>
+        <button class="modal-btn pdf-btn" onclick="Exporter.toPDF()">📄 PDF</button>
+        <button class="modal-btn cancel"  onclick="Exporter.closeModal()">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Date Picker Modal ────────────────────────────────── -->
+  <div class="modal-overlay" id="date-modal">
+    <div class="modal">
+      <div class="modal-title">📅 Pilih Tanggal Transaksi</div>
+      <div class="modal-sub">Tanggal ini akan disertakan saat kamu mengirim pesan berikutnya</div>
+      <input type="date" id="date-input" class="date-input">
+      <div class="modal-btns" style="margin-top:16px">
+        <button class="modal-btn cancel" onclick="Features.clearDate()">Hapus</button>
+        <button class="modal-btn excel"  onclick="Features.setDate()">Gunakan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Category Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="cat-modal">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-title">🏷️ Kategori Custom</div>
+      <div class="modal-sub">Tambah kategori pengeluaran/pemasukan kustom</div>
+      <div class="cat-input-row">
+        <input type="text" id="cat-input" class="db-search" placeholder="Nama kategori..." style="flex:1;padding:8px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:Sora,sans-serif;font-size:13px;outline:none">
+        <button class="modal-btn excel" style="flex:0;padding:8px 14px;white-space:nowrap" onclick="Features.addCategory()">+ Tambah</button>
+      </div>
+      <div class="cat-list" id="cat-list"></div>
+      <div class="modal-btns" style="margin-top:12px">
+        <button class="modal-btn cancel" onclick="Features.closeCategories()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Backup Modal ─────────────────────────────────────── -->
+  <div class="modal-overlay" id="backup-modal">
+    <div class="modal">
+      <div class="modal-title">💾 Backup & Restore</div>
+      <div class="modal-sub">Export semua data sebagai JSON atau import dari file backup</div>
+      <div class="modal-btns">
+        <button class="modal-btn excel" onclick="Features.backupJSON()">⬇️ Export JSON</button>
+        <button class="modal-btn pdf-btn" onclick="document.getElementById('restore-input').click()">⬆️ Import JSON</button>
+      </div>
+      <input type="file" id="restore-input" accept=".json" style="display:none" onchange="Features.restoreJSON(event)">
+      <div class="modal-btns" style="margin-top:8px">
+        <button class="modal-btn cancel" onclick="Features.closeBackup()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PIN Setup Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="pin-setup-modal">
+    <div class="modal">
+      <div class="modal-title">🔐 Atur PIN Baru</div>
+      <div class="modal-sub" id="pin-setup-sub">Masukkan 4 digit PIN baru</div>
+      <div class="pin-dots" id="pin-setup-dots" style="justify-content:center;margin:16px 0">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pin-pad" style="max-width:240px;margin:0 auto">
+        <button onclick="PIN.setupPress('1')">1</button>
+        <button onclick="PIN.setupPress('2')">2</button>
+        <button onclick="PIN.setupPress('3')">3</button>
+        <button onclick="PIN.setupPress('4')">4</button>
+        <button onclick="PIN.setupPress('5')">5</button>
+        <button onclick="PIN.setupPress('6')">6</button>
+        <button onclick="PIN.setupPress('7')">7</button>
+        <button onclick="PIN.setupPress('8')">8</button>
+        <button onclick="PIN.setupPress('9')">9</button>
+        <button class="pin-empty"></button>
+        <button onclick="PIN.setupPress('0')">0</button>
+        <button onclick="PIN.setupDel()">⌫</button>
+      </div>
+      <div class="modal-btns" style="margin-top:16px">
+        <button class="modal-btn cancel" onclick="PIN.closeSetup()">Batal</button>
+        <button class="modal-btn" style="border-color:rgba(248,113,113,0.4);color:var(--red)" onclick="PIN.removePin()">Hapus PIN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Confirm Transaction Modal ──────────────────────────── -->
+  <div class="modal-overlay" id="confirm-tx-modal">
+    <div class="modal">
+      <div style="font-size:32px;margin-bottom:8px" id="confirm-tx-icon">📤</div>
+      <div class="modal-title">
+        Catat <span id="confirm-tx-type">Pengeluaran</span>?
+      </div>
+      <div class="confirm-tx-detail">
+        <div class="confirm-tx-row">
+          <span>Keterangan</span>
+          <strong id="confirm-tx-label">—</strong>
+        </div>
+        <div class="confirm-tx-row">
+          <span>Jumlah</span>
+          <strong id="confirm-tx-amount" style="color:var(--accent)">—</strong>
+        </div>
+        <div class="confirm-tx-row">
+          <span>Kategori</span>
+          <strong id="confirm-tx-cat">—</strong>
+        </div>
+        <div class="confirm-tx-row">
+          <span>Tanggal</span>
+          <strong id="confirm-tx-date">—</strong>
+        </div>
+      </div>
+      <div class="modal-sub" style="margin-top:0;margin-bottom:16px">Apakah data sudah benar?</div>
+      <div class="modal-btns">
+        <button class="modal-btn cancel"  onclick="Confirm.reject()">Batal</button>
+        <button class="modal-btn"         onclick="Confirm.edit()" style="border-color:rgba(251,191,36,0.4);color:var(--amber)">✏️ Edit</button>
+        <button class="modal-btn excel"   onclick="Confirm.approve()">✅ Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Edit Transaction Modal ──────────────────────────────── -->
+  <div class="modal-overlay" id="edit-tx-modal">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-title" id="edit-tx-title">✏️ Edit Transaksi</div>
+      <div class="edit-tx-form">
+        <div class="edit-field">
+          <label>Keterangan</label>
+          <input type="text" id="edit-tx-label" class="edit-input" placeholder="Nama transaksi">
+        </div>
+        <div class="edit-field">
+          <label>Jumlah (Rp)</label>
+          <input type="number" id="edit-tx-amount" class="edit-input" placeholder="0" min="0">
+        </div>
+        <div class="edit-row">
+          <div class="edit-field" style="flex:1">
+            <label>Tipe</label>
+            <select id="edit-tx-type" class="edit-input">
+              <option value="expense">Pengeluaran</option>
+              <option value="income">Pemasukan</option>
+            </select>
+          </div>
+          <div class="edit-field" style="flex:1">
+            <label>Kategori</label>
+            <select id="edit-tx-cat" class="edit-input"></select>
+          </div>
+        </div>
+        <div class="edit-field">
+          <label>Tanggal</label>
+          <input type="date" id="edit-tx-date" class="edit-input date-input" style="margin-top:0">
+        </div>
+      </div>
+      <div class="modal-btns" style="margin-top:16px">
+        <button class="modal-btn cancel"  onclick="EditTx.close()">Batal</button>
+        <button id="edit-tx-delete" class="modal-btn" style="border-color:rgba(248,113,113,0.4);color:var(--red)" onclick="EditTx.remove()">🗑 Hapus</button>
+        <button class="modal-btn excel"   onclick="EditTx.save()">💾 Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Budget Modal ────────────────────────────────────────── -->
+  <div class="modal-overlay" id="budget-modal">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-title">🎯 Budget per Kategori</div>
+      <div class="modal-sub">Set batas pengeluaran bulanan per kategori. FinChat akan memperingatkan kalau mendekati limit.</div>
+      <div class="budget-list" id="budget-list"></div>
+      <div class="modal-btns" style="margin-top:12px">
+        <button class="modal-btn cancel" onclick="Budget.closeModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Onboarding Modal ────────────────────────────────────── -->
+  <div class="modal-overlay" id="onboarding-modal">
+    <div class="modal" style="max-width:380px">
+      <div id="ob-icon" style="font-size:48px;margin-bottom:12px">💬</div>
+      <div class="modal-title" id="ob-title">Selamat datang!</div>
+      <div class="modal-sub" id="ob-desc">Deskripsi</div>
+      <div class="ob-example" id="ob-example"></div>
+      <div class="ob-dots" id="ob-dots"></div>
+      <div class="ob-step" id="ob-step">1 / 4</div>
+      <div class="modal-btns" style="margin-top:16px">
+        <button class="modal-btn cancel" onclick="Onboarding.finish()">Lewati</button>
+        <button class="modal-btn excel"  id="ob-next" onclick="Onboarding.next()">Lanjut →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Hidden PDF Render ────────────────────────────────── -->
+  <div id="pdf-render"></div>
+
+  <!-- ── Scripts ─────────────────────────────────────────── -->
+  <script src="config.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/parser.js"></script>  <!-- hybrid parser -->
+  <script src="js/api.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/features.js"></script>
+  <script src="js/core-features.js"></script>
+  <script src="js/export.js"></script>
+
+  <script>
+    /* ── Theme ── */
+    const Theme = {
+      LS_KEY: 'finchat_theme',
+      init() {
+        const saved = localStorage.getItem(this.LS_KEY) || 'dark';
+        this._apply(saved);
+      },
+      toggle() {
+        const isLight = document.body.classList.contains('light');
+        this._apply(isLight ? 'dark' : 'light');
+      },
+      _apply(mode) {
+        const isLight = mode === 'light';
+        document.body.classList.toggle('light', isLight);
+        document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
+        localStorage.setItem(this.LS_KEY, mode);
+      }
+    };
+
+    /* ── Global UI helpers ── */
+    const UI = {
+      confirmReset() { document.getElementById('confirm-modal').classList.add('open'); },
+      closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); },
+      doReset() {
+        UI.closeConfirm();
+        ChartRenderer.destroyAll();
+        App.clear();
+        Chat.resetUI();
+        Chat.showToast('🗑 Data berhasil direset');
+      }
+    };
+
+    function handleSendText(text) {
+      document.getElementById('input').value = text;
+      handleSend();
+    }
+
+    function handleSend() {
+      const input = document.getElementById('input');
+      let text = input.value.trim();
+      if (!text) return;
+      // Inject selected date if set
+      const selDate = Features.getSelectedDate();
+      if (selDate) {
+        text += ` (tanggal: ${selDate})`;
+        Features.clearDate(true); // clear silently
+      }
+      input.value = '';
+      Chat.autoResize(input);
+      API.send(text);
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    }
+
+    /* ── Init ── */
+    window.addEventListener('DOMContentLoaded', () => {
+      Theme.init();
+      App.load();
+      PIN.init();
+      // Onboarding dipanggil setelah PIN (di PIN._showApp)
+    });
+  </script>
+
+</body>
+</html>
