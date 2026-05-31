@@ -183,9 +183,241 @@ const API = (() => {
     TokenCounter.track(0, 0);
   }
 
+  // ── Deteksi input laporan kompleks (multi-baris) ──────────
+  function _isComplexReport(text) {
+    const lines = text
+      .trim()
+      .split("\n")
+      .filter((l) => l.trim());
+    // Minimal 3 baris DAN ada tanda-tanda laporan keuangan
+    if (lines.length < 3) return false;
+    const hasCalc = /[×x\*]\s*\d|\d\s*[×x\*]|\d\s*\+\s*\d|\d\s*-\s*\d/.test(
+      text,
+    );
+    const hasCarryOver = /bulan\s*(kemaren|lalu|sebelum)|carry|sisa/.test(
+      text.toLowerCase(),
+    );
+    const hasMultiAmt = (text.match(/\d+[\d.,]*/g) || []).length >= 3;
+    return hasMultiAmt && (hasCalc || hasCarryOver);
+  }
+
+  async function _handleComplexReport(userText) {
+    App.pushMessage({ role: "user", content: userText });
+    App.setLoading(true);
+    document.getElementById("send-btn").disabled = true;
+    Chat.showTyping();
+
+    const reportPrompt = `User mengirim catatan keuangan kompleks dalam format laporan.
+Tugasmu:
+1. Baca dan pahami seluruh catatan
+2. Hitung semua matematika yang ada (perkalian, penjumlahan, dll)
+3. Identifikasi semua transaksi pemasukan dan pengeluaran
+4. Pisahkan carry over bulan lalu sebagai informasi saldo awal
+5. Buat ringkasan yang jelas
+
+Input:
+${userText}
+
+Balas dengan:
+- Ringkasan hasil parsing (apa yang kamu temukan)
+- Daftar transaksi yang berhasil diidentifikasi
+- Total pemasukan, pengeluaran, dan saldo
+
+Sertakan data di akhir:
+<FC_DATA>
+{
+  "income_total": <total>,
+  "expense_total": <total>,
+  "transactions": [<semua transaksi>]
+}
+</FC_DATA>`;
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: CONFIG.MODEL,
+          max_tokens: 1500,
+          system: App.buildSystemPrompt(),
+          messages: [
+            ...App.getMessagesForAPI(),
+            { role: "user", content: reportPrompt },
+          ],
+        }),
+      });
+
+      const data = await res.json();
+      Chat.removeTyping();
+
+      if (!res.ok) {
+        Chat.appendMessage("bot", "⚠️ Ada gangguan. Coba lagi ya!");
+        App.getMessages().pop();
+        return;
+      }
+
+      const reply = data?.content?.[0]?.text;
+      if (!reply) {
+        Chat.appendMessage("bot", "🙏 Coba kirim ulang ya.");
+        return;
+      }
+
+      if (data.usage)
+        TokenCounter.track(data.usage.input_tokens, data.usage.output_tokens);
+
+      const finData =
+        parseTag("FC_DATA", reply) || parseTag("FINCHAT_DATA", reply);
+      if (finData) {
+        App.applyFinData(finData);
+        Chat.updateSummary(
+          App.getFinancial().income,
+          App.getFinancial().expense,
+        );
+      }
+
+      Chat.appendMessage("bot", reply);
+      App.pushMessage({ role: "assistant", content: reply });
+      App.save();
+    } catch (e) {
+      Chat.removeTyping();
+      Chat.appendMessage(
+        "bot",
+        !navigator.onLine
+          ? "📡 Tidak ada koneksi internet."
+          : "🔌 Gagal konek ke server.",
+      );
+      App.getMessages().pop();
+    } finally {
+      App.setLoading(false);
+      document.getElementById("send-btn").disabled = false;
+      document.getElementById("input").focus();
+    }
+  }
+  //  Deteksi input yang mengandung 2+ transaksi sekaligus
+  //  Contoh: "gaji 8juta, sudah dipake 2juta buat beli tv"
   // ══════════════════════════════════════════════════════════
-  //  AI HANDLER — kirim ke Claude untuk yang ambigu
-  // ══════════════════════════════════════════════════════════
+
+  function _isMultiTransaction(text) {
+    const lower = text.toLowerCase();
+    // Signal kata penghubung antar transaksi
+    const connectors = [
+      ", ",
+      " dan ",
+      " tapi ",
+      " terus ",
+      " lalu ",
+      " sama ",
+      " sisanya ",
+      " sudah dipake ",
+      " dipakai ",
+      " digunakan ",
+      " buat ",
+      " untuk beli ",
+      " langsung beli ",
+    ];
+    // Harus ada minimal 2 angka yang berbeda
+    const amounts = text.match(/\d+[\d.,]*\s*(rb|ribu|juta|jt|k|miliar|m)?/gi);
+    if (!amounts || amounts.length < 2) return false;
+    // Harus ada connector
+    return connectors.some((c) => lower.includes(c));
+  }
+
+  async function _handleMultiTransaction(userText) {
+    App.pushMessage({ role: "user", content: userText });
+    App.setLoading(true);
+    document.getElementById("send-btn").disabled = true;
+    Chat.showTyping();
+
+    const multiPrompt = `User mengirim input yang mengandung BEBERAPA transaksi sekaligus.
+Tugasmu: ekstrak SEMUA transaksi dari input, lalu simpan semuanya.
+
+Input user: "${userText}"
+
+Balas dengan format:
+1. Konfirmasi semua transaksi yang kamu temukan (ringkas)
+2. Sertakan data di akhir
+
+<FC_DATA>
+{
+  "income_total": <total_pemasukan_kumulatif>,
+  "expense_total": <total_pengeluaran_kumulatif>,
+  "transactions": [<semua_transaksi_yang_sudah_ada_plus_baru>]
+}
+</FC_DATA>`;
+
+    try {
+      const messages = [
+        ...App.getMessagesForAPI(),
+        { role: "user", content: multiPrompt },
+      ];
+
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: CONFIG.MODEL,
+          max_tokens: CONFIG.MAX_TOKENS,
+          system: App.buildSystemPrompt(),
+          messages,
+        }),
+      });
+
+      const data = await res.json();
+      Chat.removeTyping();
+
+      if (!res.ok) {
+        const errCode = data?.error?.type || "";
+        const errMap = {
+          authentication_error: "🔑 API key tidak valid.",
+          rate_limit_error: "⏳ Terlalu banyak request. Tunggu sebentar.",
+          overloaded_error: "🔄 Server AI sibuk. Coba lagi.",
+        };
+        Chat.appendMessage(
+          "bot",
+          errMap[errCode] || "⚠️ Ada gangguan. Coba lagi ya!",
+        );
+        App.getMessages().pop();
+        return;
+      }
+
+      const reply = data?.content?.[0]?.text;
+      if (!reply) {
+        Chat.appendMessage("bot", "🙏 Coba kirim ulang ya.");
+        return;
+      }
+
+      if (data.usage)
+        TokenCounter.track(data.usage.input_tokens, data.usage.output_tokens);
+
+      const finData =
+        parseTag("FC_DATA", reply) || parseTag("FINCHAT_DATA", reply);
+      if (finData) {
+        App.applyFinData(finData);
+        Chat.updateSummary(
+          App.getFinancial().income,
+          App.getFinancial().expense,
+        );
+      }
+
+      Chat.appendMessage("bot", reply);
+      App.pushMessage({ role: "assistant", content: reply });
+      App.save();
+    } catch (e) {
+      Chat.removeTyping();
+      Chat.appendMessage(
+        "bot",
+        !navigator.onLine
+          ? "📡 Tidak ada koneksi internet."
+          : "🔌 Gagal konek ke server.",
+      );
+      App.getMessages().pop();
+      console.error("[FinChat] Multi-tx error:", e);
+    } finally {
+      App.setLoading(false);
+      document.getElementById("send-btn").disabled = false;
+      document.getElementById("input").focus();
+    }
+  }
 
   async function _handleAI(userText) {
     App.pushMessage({ role: "user", content: userText });
@@ -279,10 +511,22 @@ const API = (() => {
   async function send(userText) {
     if (App.isLoading()) return;
 
-    // Tampilkan pesan user
     Chat.appendMessage("user", userText);
 
-    // Parse intent dulu — rule-based
+    // Cek multi-transaksi DULU — sebelum parser lokal
+    // Supaya "gaji 8juta, beli tv 2juta" tidak salah parse
+    if (_isMultiTransaction(userText)) {
+      await _handleMultiTransaction(userText);
+      return;
+    }
+
+    // Cek laporan kompleks multi-baris
+    if (_isComplexReport(userText)) {
+      await _handleComplexReport(userText);
+      return;
+    }
+
+    // Parse intent — rule-based
     const parsed = Parser.parse(userText);
 
     if (parsed) {

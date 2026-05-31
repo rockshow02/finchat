@@ -997,3 +997,84 @@ body, .header, .summary-bar, .summary-item,
   /* Status dot — sembunyikan teks */
   .status-dot span { display: none; }
 }
+
+/* ── Hamburger Button ────────────────────────────────────── */
+.hamburger-btn {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; padding: 0;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.hamburger-btn:hover { border-color: var(--accent); background: rgba(124,106,255,0.08); }
+.hamburger-btn span {
+  display: block; width: 16px; height: 1.5px;
+  background: var(--muted2); border-radius: 2px;
+  transition: all 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+  transform-origin: center;
+}
+/* Animasi X saat open */
+.hamburger-btn.open span:nth-child(1) { transform: translateY(5.5px) rotate(45deg); background: var(--accent2); }
+.hamburger-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger-btn.open span:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); background: var(--accent2); }
+
+/* ── Hamburger Dropdown ──────────────────────────────────── */
+.hamburger-menu {
+  position: fixed;
+  top: 56px; right: 12px;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 150;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.34, 1.2, 0.64, 1);
+  transform-origin: top right;
+}
+.hamburger-menu.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+.hm-section { padding: 6px 0; }
+.hm-label {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  padding: 4px 16px 2px;
+  font-weight: 600;
+}
+.hm-item {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  background: transparent; border: none;
+  color: var(--text); font-family: 'Sora', sans-serif; font-size: 13px;
+  cursor: pointer; text-align: left;
+  transition: background 0.12s;
+}
+.hm-item:hover { background: var(--surface2); }
+.hm-item:active { background: rgba(124,106,255,0.1); }
+.hm-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.hm-divider { height: 1px; background: var(--border); margin: 0; }
+.hm-danger { color: var(--red) !important; }
+.hm-danger:hover { background: rgba(248,113,113,0.08) !important; }
+
+/* ── Hamburger Overlay ───────────────────────────────────── */
+.hamburger-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  z-index: 149;
+}
+.hamburger-overlay.open { display: block; }
+
+/* Light mode hamburger */
+body.light .hamburger-menu { box-shadow: 0 8px 32px rgba(0,0,0,0.15); }

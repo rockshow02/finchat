@@ -16,7 +16,14 @@
 
   <title>FinChat — Asisten Keuangan Pribadi</title>
 
-  <!-- Favicon SVG inline -->
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FinChat">
+  <meta name="mobile-web-app-capable" content="yes">
+
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c6aff'/><text y='.9em' font-size='72' x='12'>💬</text></svg>">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -74,18 +81,58 @@
         <span class="theme-icon" id="theme-icon">🌙</span>
         <button class="theme-toggle" id="theme-toggle" onclick="Theme.toggle()" title="Ganti tema"></button>
         <span id="token-counter" class="token-counter" onclick="TokenCounter.reset()" title="Klik untuk reset">🔢 0 token</span>
-        <div class="export-group">
-          <button class="export-btn" onclick="PIN.openSetup()" title="Atur PIN">🔐</button>
-          <button class="export-btn" onclick="Features.openDatePicker()" title="Input tanggal">📅</button>
-          <button class="export-btn" onclick="Features.openCategories()" title="Kategori">🏷️</button>
-          <button class="export-btn" onclick="Budget.openModal()" title="Budget">🎯</button>
-          <button class="export-btn" onclick="Features.openBackup()" title="Backup & Restore">💾</button>
-          <button class="export-btn excel" onclick="Exporter.toExcel()" title="Export Excel">📗 <span class="btn-label">Excel</span></button>
-          <button class="export-btn pdf"   onclick="Exporter.toPDF()"   title="Export PDF">📄 <span class="btn-label">PDF</span></button>
-        </div>
-        <button class="reset-btn" onclick="UI.confirmReset()" title="Reset">🗑</button>
+        <!-- Hamburger -->
+        <button class="hamburger-btn" id="hamburger-btn" onclick="HamburgerMenu.toggle()" title="Menu">
+          <span></span><span></span><span></span>
+        </button>
       </div>
     </div>
+
+    <!-- Hamburger Dropdown Menu -->
+    <div class="hamburger-menu" id="hamburger-menu">
+      <div class="hm-section">
+        <div class="hm-label">Pengaturan</div>
+        <button class="hm-item" onclick="PIN.openSetup();HamburgerMenu.close()">
+          <span class="hm-icon">🔐</span><span>Atur PIN</span>
+        </button>
+        <button class="hm-item" onclick="Theme.toggle();HamburgerMenu.close()">
+          <span class="hm-icon" id="hm-theme-icon">🌙</span><span id="hm-theme-label">Mode Terang</span>
+        </button>
+      </div>
+      <div class="hm-divider"></div>
+      <div class="hm-section">
+        <div class="hm-label">Catat</div>
+        <button class="hm-item" onclick="Features.openDatePicker();HamburgerMenu.close()">
+          <span class="hm-icon">📅</span><span>Pilih Tanggal</span>
+        </button>
+        <button class="hm-item" onclick="Features.openCategories();HamburgerMenu.close()">
+          <span class="hm-icon">🏷️</span><span>Kategori Custom</span>
+        </button>
+        <button class="hm-item" onclick="Budget.openModal();HamburgerMenu.close()">
+          <span class="hm-icon">🎯</span><span>Budget per Kategori</span>
+        </button>
+      </div>
+      <div class="hm-divider"></div>
+      <div class="hm-section">
+        <div class="hm-label">Export & Backup</div>
+        <button class="hm-item" onclick="Exporter.toExcel();HamburgerMenu.close()">
+          <span class="hm-icon">📗</span><span>Export Excel</span>
+        </button>
+        <button class="hm-item" onclick="Exporter.toPDF();HamburgerMenu.close()">
+          <span class="hm-icon">📄</span><span>Export PDF</span>
+        </button>
+        <button class="hm-item" onclick="Features.openBackup();HamburgerMenu.close()">
+          <span class="hm-icon">💾</span><span>Backup & Restore</span>
+        </button>
+      </div>
+      <div class="hm-divider"></div>
+      <div class="hm-section">
+        <button class="hm-item hm-danger" onclick="UI.confirmReset();HamburgerMenu.close()">
+          <span class="hm-icon">🗑️</span><span>Reset Data</span>
+        </button>
+      </div>
+    </div>
+    <div class="hamburger-overlay" id="hamburger-overlay" onclick="HamburgerMenu.close()"></div>
 
     <!-- Summary Bar -->
     <div class="summary-bar">
@@ -455,6 +502,28 @@
   <script src="js/export.js"></script>
 
   <script>
+    /* ── Hamburger Menu ── */
+    const HamburgerMenu = {
+      open() {
+        document.getElementById('hamburger-menu').classList.add('open');
+        document.getElementById('hamburger-overlay').classList.add('open');
+        document.getElementById('hamburger-btn').classList.add('open');
+        // Sync theme label
+        const isLight = document.body.classList.contains('light');
+        document.getElementById('hm-theme-icon').textContent  = isLight ? '🌙' : '☀️';
+        document.getElementById('hm-theme-label').textContent = isLight ? 'Mode Gelap' : 'Mode Terang';
+      },
+      close() {
+        document.getElementById('hamburger-menu').classList.remove('open');
+        document.getElementById('hamburger-overlay').classList.remove('open');
+        document.getElementById('hamburger-btn').classList.remove('open');
+      },
+      toggle() {
+        const isOpen = document.getElementById('hamburger-menu').classList.contains('open');
+        isOpen ? this.close() : this.open();
+      }
+    };
+
     /* ── Theme ── */
     const Theme = {
       LS_KEY: 'finchat_theme',
@@ -517,6 +586,25 @@
       App.load();
       PIN.init();
       // Onboarding dipanggil setelah PIN (di PIN._showApp)
+
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
+          .catch(err => console.warn('[PWA] SW registration failed:', err));
+      }
+
+      // Handle PWA shortcuts (?action=expense atau ?action=saldo)
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      if (action === 'expense') {
+        setTimeout(() => {
+          document.getElementById('input').value = 'catat pengeluaran';
+          document.getElementById('input').focus();
+        }, 1000);
+      } else if (action === 'saldo') {
+        setTimeout(() => API.send('saldo'), 1000);
+      }
     });
   </script>
 

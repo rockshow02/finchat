@@ -4,6 +4,10 @@
 //  Deploy: set environment variable ANTHROPIC_API_KEY
 // ============================================================
 
+// Load .env untuk development lokal
+// Di production (Render), env var diset dari dashboard — tidak butuh .env
+require("dotenv").config();
+
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
@@ -29,6 +33,9 @@ const MIME = {
   ".png": "image/png",
   ".ico": "image/x-icon",
   ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
 };
 
 const server = http.createServer((req, res) => {

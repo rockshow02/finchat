@@ -112,13 +112,16 @@ const Parser = (() => {
     "laptop",
     "gadget",
     "elektronik",
-    // tempat & merchant
-    "indomaret",
-    "alfamart",
-    "supermarket",
-    "mall",
-    "shopee",
-    "tokopedia",
+    // kosakata gaul rupiah
+    "cepek",
+    "gope",
+    "gopek",
+    "seceng",
+    "ceban",
+    "goceng",
+    "goban",
+    "gocap",
+    "cetiao",
     "lazada",
     "traveloka",
     "tiket.com",
@@ -160,6 +163,37 @@ const Parser = (() => {
     "ruang",
     "halaman",
   ];
+
+  // ── Kosakata gaul Rupiah Indonesia ───────────────────────
+  const SLANG_MAP = {
+    // Betawi / gaul umum
+    cepek: 100,
+    gope: 500,
+    gopek: 500,
+    seceng: 1_000,
+    seceng: 1_000,
+    ceban: 10_000,
+    goceng: 5_000,
+    goban: 50_000,
+    gocap: 50_000,
+    cetiao: 1_000_000,
+    "cepek ceng": 100_000,
+    cepekceng: 100_000,
+    // Kombinasi dengan angka: "2 ceban" = 20.000, "3 goceng" = 15.000
+  };
+
+  function _parseSlang(str) {
+    const s = str.toLowerCase().trim();
+    // Cek kombinasi angka + slang: "2 ceban", "3 goceng", "5 goban"
+    for (const [slang, val] of Object.entries(SLANG_MAP)) {
+      const re = new RegExp(`(\\d+\\.?\\d*)\\s*${slang.replace(" ", "\\s*")}`);
+      const m = s.match(re);
+      if (m) return parseFloat(m[1]) * val;
+      // Cek tanpa angka: "ceban", "goceng"
+      if (s.includes(slang)) return val;
+    }
+    return null;
+  }
 
   // ── Format angka ribuan dengan titik ──────────────────────
   // "45.000" → "45000", "1.500.000" → "1500000"
@@ -206,6 +240,10 @@ const Parser = (() => {
   function _extractAmount(text) {
     // Deteksi angka negatif — langsung return null (ke AI)
     if (/[-−]\s*\d/.test(text)) return null;
+
+    // Cek slang dulu — "goceng", "ceban", "2 goban", dll
+    const slangVal = _parseSlang(text.toLowerCase());
+    if (slangVal !== null && slangVal > 0) return slangVal;
 
     const s = _normalizeNumber(text.toLowerCase().replace(/,/g, "."));
 
