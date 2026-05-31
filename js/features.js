@@ -57,8 +57,10 @@ const PIN = (() => {
     if (App.getMessages().length > 0)
       Chat.showToast("💾 Data sebelumnya dipulihkan");
     document.getElementById("input").focus();
-    // Tampilkan onboarding untuk user baru
     setTimeout(() => Onboarding.show(), 400);
+    HealthScore.updateHeaderChip();
+    WeeklyInsight.checkAutoShow();
+    SpendingAlert.init();
   }
 
   function _updateDots(id, count) {

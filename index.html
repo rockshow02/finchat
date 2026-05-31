@@ -78,12 +78,17 @@
       </div>
       <div class="header-right">
         <div class="status-dot"><div class="dot"></div></div>
+        <button class="nav-icon-btn" onclick="HealthScore.openModal()" title="Health Score" id="nav-health">💪</button>
+        <button class="nav-icon-btn" onclick="WeeklyInsight.openModal()" title="Insight Mingguan">📊</button>
+        <button class="nav-icon-btn alert-nav-btn" onclick="SpendingAlert.openModal()" title="Spending Alert" id="nav-alert">
+          🔔
+          <span class="alert-badge" id="alert-badge" style="display:none">0</span>
+        </button>
         <span class="theme-icon" id="theme-icon">🌙</span>
-        <button class="theme-toggle" id="theme-toggle" onclick="Theme.toggle()" title="Ganti tema"></button>
-        <span id="token-counter" class="token-counter" onclick="TokenCounter.reset()" title="Klik untuk reset">🔢 0 token</span>
         <!-- Hamburger -->
         <button class="hamburger-btn" id="hamburger-btn" onclick="HamburgerMenu.toggle()" title="Menu">
           <span></span><span></span><span></span>
+          <span class="alert-badge" id="alert-badge" style="display:none">0</span>
         </button>
       </div>
     </div>
@@ -212,6 +217,17 @@
   <!-- ── Toast ───────────────────────────────────────────── -->
   <div class="toast" id="toast"></div>
 
+  <!-- ── Spending Alert Modal ─────────────────────────────────── -->
+  <div class="modal-overlay" id="alert-modal">
+    <div class="modal alert-modal-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="modal-title" style="margin:0">🔔 Spending Alert</div>
+        <button onclick="SpendingAlert.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="alert-body"></div>
+    </div>
+  </div>
+
   <!-- ── Confirm Modal (Reset) ───────────────────────────── -->
   <div class="modal-overlay" id="confirm-modal">
     <div class="modal">
@@ -295,6 +311,28 @@
 
       <!-- Footer -->
       <div class="db-footer" id="db-footer"></div>
+    </div>
+  </div>
+
+  <!-- ── Weekly Insight Modal ────────────────────────────────── -->
+  <div class="modal-overlay" id="insight-modal">
+    <div class="modal insight-modal-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="modal-title" style="margin:0">📊 Insight Mingguan</div>
+        <button onclick="WeeklyInsight.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="insight-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ── Health Score Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="health-modal">
+    <div class="modal hs-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="modal-title" style="margin:0">💪 Financial Health Score</div>
+        <button onclick="HealthScore.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="hs-modal-content"></div>
     </div>
   </div>
 
@@ -472,14 +510,22 @@
 
   <!-- ── Onboarding Modal ────────────────────────────────────── -->
   <div class="modal-overlay" id="onboarding-modal">
-    <div class="modal" style="max-width:380px">
-      <div id="ob-icon" style="font-size:48px;margin-bottom:12px">💬</div>
-      <div class="modal-title" id="ob-title">Selamat datang!</div>
+    <div class="modal ob-modal">
+      <div id="ob-icon" style="font-size:44px;margin-bottom:10px">👋</div>
+      <div class="modal-title" id="ob-title">Halo!</div>
       <div class="modal-sub" id="ob-desc">Deskripsi</div>
-      <div class="ob-example" id="ob-example"></div>
+
+      <!-- Prompt chips — bisa diklik langsung -->
+      <div class="ob-prompts" id="ob-prompts" style="display:none"></div>
+
+      <!-- Tip -->
+      <div class="ob-tip" id="ob-tip" style="display:none"></div>
+
+      <!-- Dots & step -->
       <div class="ob-dots" id="ob-dots"></div>
-      <div class="ob-step" id="ob-step">1 / 4</div>
-      <div class="modal-btns" style="margin-top:16px">
+      <div class="ob-step" id="ob-step">1 / 5</div>
+
+      <div class="modal-btns" style="margin-top:14px">
         <button class="modal-btn cancel" onclick="Onboarding.finish()">Lewati</button>
         <button class="modal-btn excel"  id="ob-next" onclick="Onboarding.next()">Lanjut →</button>
       </div>
@@ -495,6 +541,9 @@
   <script src="js/chat.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/parser.js"></script>  <!-- hybrid parser -->
+  <script src="js/health-score.js"></script>    <!-- financial health score -->
+  <script src="js/weekly-insight.js"></script>   <!-- weekly insight -->
+  <script src="js/spending-alert.js"></script>   <!-- spending alert -->
   <script src="js/api.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/features.js"></script>
@@ -586,7 +635,6 @@
       App.load();
       PIN.init();
       // Onboarding dipanggil setelah PIN (di PIN._showApp)
-
       // Register Service Worker
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')

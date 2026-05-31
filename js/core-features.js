@@ -420,7 +420,7 @@ const Budget = (() => {
 })();
 
 /* ════════════════════════════════════════════════════════════
-   4. ONBOARDING SCREEN
+   4. ONBOARDING SCREEN — Interaktif
    ════════════════════════════════════════════════════════════ */
 const Onboarding = (() => {
   const LS = "finchat_onboarded";
@@ -428,28 +428,60 @@ const Onboarding = (() => {
 
   const STEPS = [
     {
-      icon: "💬",
-      title: "Selamat datang di FinChat!",
-      desc: "Catat keuanganmu cukup dengan ngobrol natural. Tidak perlu form yang ribet.",
-      example: '"Makan siang 45rb"',
+      icon: "👋",
+      title: "Halo! Aku FinChat",
+      desc: "Asisten keuangan pribadimu. Catat pemasukan & pengeluaran cukup dengan ngobrol natural — tidak perlu form yang ribet.",
+      prompts: null,
+      tip: null,
+    },
+    {
+      icon: "💸",
+      title: "Catat Pengeluaran",
+      desc: "Ketik seperti biasa ngobrol. FinChat langsung ngerti dan catat otomatis.",
+      prompts: [
+        { label: "🍜 Makan siang 45rb", text: "Makan siang 45rb" },
+        { label: "⛽ Isi bensin 100rb", text: "Isi bensin 100rb" },
+        { label: "☕ Kopi 35rb", text: "Kopi 35rb" },
+        { label: "🛒 Belanja 250rb", text: "Belanja supermarket 250rb" },
+      ],
+      tip: "Klik salah satu untuk langsung mencoba!",
+    },
+    {
+      icon: "💰",
+      title: "Catat Pemasukan",
+      desc: "Sama mudahnya. FinChat otomatis kenali ini sebagai pemasukan.",
+      prompts: [
+        { label: "💵 Gaji masuk 8 juta", text: "Gaji masuk 8 juta" },
+        { label: "🎁 Dapat bonus 500rb", text: "Dapat bonus 500rb" },
+        { label: "💼 Freelance project 2jt", text: "Freelance project 2jt" },
+        { label: "📦 Fee desain 750rb", text: "Fee desain 750rb" },
+      ],
+      tip: "Klik salah satu untuk langsung mencoba!",
     },
     {
       icon: "📊",
-      title: "Laporan & Grafik Otomatis",
-      desc: 'Ketik "laporan" atau "grafik" untuk lihat ringkasan keuanganmu kapan saja.',
-      example: '"Tampilkan grafik pengeluaran"',
-    },
-    {
-      icon: "🎯",
-      title: "Set Budget per Kategori",
-      desc: "Atur batas pengeluaran per kategori. FinChat akan ingatkan kalau hampir habis.",
-      example: "Klik 🎯 di header untuk set budget",
+      title: "Laporan & Grafik",
+      desc: "Minta laporan atau grafik kapan saja — langsung tampil tanpa loading.",
+      prompts: [
+        { label: "📋 Laporan keuangan", text: "laporan" },
+        { label: "📊 Grafik pengeluaran", text: "grafik" },
+        { label: "💰 Cek saldo", text: "saldo" },
+      ],
+      tip: null,
     },
     {
       icon: "🤖",
-      title: "AI untuk yang Kompleks",
-      desc: "Transaksi jelas dicatat instan. AI dipanggil hanya untuk analisis & pertanyaan kompleks.",
-      example: '"Kasih saran hemat pengeluaran bulan ini"',
+      title: "Tanya AI untuk Analisis",
+      desc: "Untuk pertanyaan kompleks, AI siap membantu. Transaksi biasa dicatat instan tanpa AI.",
+      prompts: [
+        { label: "💡 Saran hemat", text: "Kasih saran hemat pengeluaran saya" },
+        {
+          label: "📈 Analisis keuangan",
+          text: "Analisis kondisi keuangan saya",
+        },
+        { label: "❓ Aman bulan ini?", text: "Apakah saya aman bulan ini?" },
+      ],
+      tip: "⚡ Butuh koneksi internet & API key",
     },
   ];
 
@@ -466,19 +498,59 @@ const Onboarding = (() => {
 
   function _render() {
     const s = STEPS[_step];
+    const isLast = _step === STEPS.length - 1;
+
     document.getElementById("ob-icon").textContent = s.icon;
     document.getElementById("ob-title").textContent = s.title;
     document.getElementById("ob-desc").textContent = s.desc;
-    document.getElementById("ob-example").textContent = s.example;
     document.getElementById("ob-step").textContent =
       `${_step + 1} / ${STEPS.length}`;
-    document.getElementById("ob-next").textContent =
-      _step < STEPS.length - 1 ? "Lanjut →" : "Mulai! 🚀";
+    document.getElementById("ob-next").textContent = isLast
+      ? "Mulai! 🚀"
+      : "Lanjut →";
 
     // Dots
     document.getElementById("ob-dots").innerHTML = STEPS.map(
       (_, i) => `<span class="ob-dot ${i === _step ? "active" : ""}"></span>`,
     ).join("");
+
+    // Prompt chips
+    const promptWrap = document.getElementById("ob-prompts");
+    const tipEl = document.getElementById("ob-tip");
+
+    if (s.prompts) {
+      promptWrap.style.display = "flex";
+      promptWrap.innerHTML = s.prompts
+        .map(
+          (p) =>
+            `<button class="ob-prompt-btn" onclick="Onboarding.tryPrompt('${p.text.replace(/'/g, "\\'")}')">${p.label}</button>`,
+        )
+        .join("");
+    } else {
+      promptWrap.style.display = "none";
+      promptWrap.innerHTML = "";
+    }
+
+    if (s.tip) {
+      tipEl.style.display = "block";
+      tipEl.textContent = s.tip;
+    } else {
+      tipEl.style.display = "none";
+    }
+  }
+
+  function tryPrompt(text) {
+    // Tutup onboarding, isi input, langsung kirim
+    finish();
+    setTimeout(() => {
+      const input = document.getElementById("input");
+      if (input) {
+        input.value = text;
+        Chat.autoResize(input);
+        // Trigger send
+        if (typeof handleSend === "function") handleSend();
+      }
+    }, 300);
   }
 
   function next() {
@@ -500,5 +572,5 @@ const Onboarding = (() => {
     localStorage.removeItem(LS);
   }
 
-  return { show, next, finish, shouldShow, reset };
+  return { show, next, finish, tryPrompt, shouldShow, reset };
 })();

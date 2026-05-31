@@ -134,7 +134,10 @@ const API = (() => {
         `🏷️ Kategori: ${data.category} • 📅 ${data.date}\n\n` +
         `📤 Total pengeluaran: ${fmt(fin.expense)} | 💰 Saldo: ${fmt(fin.income - fin.expense)}`,
     );
-    Budget.checkAlert(data.category); // hanya cek kategori ini
+    Budget.checkAlert(data.category);
+    SpendingAlert.checkAfterTransaction(data.category);
+    HealthScore.updateStreak();
+    HealthScore.updateHeaderChip();
     TokenCounter.track(0, 0);
   }
 
@@ -155,6 +158,8 @@ const API = (() => {
         `🏷️ Kategori: ${data.category} • 📅 ${data.date}\n\n` +
         `📥 Total pemasukan: ${fmt(fin.income)} | 💰 Saldo: ${fmt(fin.income - fin.expense)}`,
     );
+    HealthScore.updateStreak();
+    HealthScore.updateHeaderChip();
     TokenCounter.track(0, 0);
   }
 
