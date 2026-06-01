@@ -401,6 +401,20 @@ const WeeklyInsight = (() => {
         <!-- Total transaksi -->
         <div style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center">
           ${curr.count} transaksi tercatat periode ini
+        </div>
+
+        <!-- Premium AI Insight -->
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">
+              🤖 Analisis AI <span style="background:var(--accent);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;margin-left:4px">PRO</span>
+            </div>
+          </div>
+          <div id="ai-insight-body-${weeksAgo}">
+            <button class="story-regen-btn" onclick="WeeklyInsight.generateAI(${weeksAgo})">
+              ✨ Generate Analisis AI
+            </button>
+          </div>
         </div>`;
     };
 
@@ -425,6 +439,116 @@ const WeeklyInsight = (() => {
     WeeklyInsight._activeRender = render;
   }
 
+  // ── AI Premium Insight ─────────────────────────────────────
+  const LS_AI_CACHE = "finchat_ai_insight_cache";
+
+  async function generateAI(weeksAgo = 1) {
+    const insight = generate(weeksAgo);
+    const el = document.getElementById(`ai-insight-body-${weeksAgo}`);
+    if (!el) return;
+
+    // Cek cache — valid 1 hari
+    const cacheKey = `week_${weeksAgo}_${new Date().toDateString()}`;
+    try {
+      const cache = JSON.parse(localStorage.getItem(LS_AI_CACHE) || "{}");
+      if (cache[cacheKey]) {
+        el.innerHTML = `
+          <div class="story-text" style="font-size:13px">${cache[cacheKey].replace(/\n/g, "<br>")}</div>
+          <div class="story-cached">💾 Cached — <button onclick="WeeklyInsight.regenerateAI(${weeksAgo})" style="background:transparent;border:none;color:var(--accent2);cursor:pointer;font-size:11px">Generate ulang</button></div>`;
+        return;
+      }
+    } catch {}
+
+    if (insight.empty) {
+      el.innerHTML = `<div style="font-size:12px;color:var(--muted2);text-align:center;padding:10px">Belum ada data untuk dianalisis.</div>`;
+      return;
+    }
+
+    // Loading
+    el.innerHTML = `
+      <div class="story-loading" style="padding:16px 0">
+        <div class="story-loading-dots"><span></span><span></span><span></span></div>
+        <div style="font-size:12px;color:var(--muted2);margin-top:6px">AI sedang menganalisis...</div>
+      </div>`;
+
+    const { curr, prev, expenseChange, savingsRate } = insight;
+    const fmt = Chat.fmt;
+    const weekLabel =
+      weeksAgo === 0
+        ? "minggu ini"
+        : weeksAgo === 1
+          ? "minggu lalu"
+          : `${weeksAgo} minggu lalu`;
+
+    // Prompt hemat — hanya kirim summary
+    const topCatsText = curr.topCats
+      .map(([c, a]) => `${c} ${fmt(a)}`)
+      .join(", ");
+    const prompt = `Analisis keuangan ${weekLabel} dalam bahasa Indonesia casual dan personal. Max 5 kalimat.
+
+Data:
+- Income: ${fmt(curr.income)} | Expense: ${fmt(curr.expense)} | Savings rate: ${savingsRate}%
+- Top pengeluaran: ${topCatsText || "belum ada"}
+- Perubahan expense vs minggu sebelumnya: ${expenseChange ? expenseChange.pct + "% " + (expenseChange.naik ? "naik" : "turun") : "tidak ada data"}
+- Jumlah transaksi: ${curr.count}
+
+Berikan: 1-2 pola menarik yang ditemukan, 1 saran konkret yang actionable, dan 1 kalimat motivasi. Jangan ulangi semua angka.`;
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: CONFIG.MODEL,
+          max_tokens: 350,
+          system:
+            "Kamu asisten keuangan FinChat. Analisis singkat, personal, tidak menghakimi.",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      const data = await res.json();
+      const reply = data?.content?.[0]?.text;
+      if (data.usage)
+        TokenCounter.track(data.usage.input_tokens, data.usage.output_tokens);
+
+      if (!reply) throw new Error("Empty response");
+
+      // Cache
+      try {
+        const cache = JSON.parse(localStorage.getItem(LS_AI_CACHE) || "{}");
+        cache[cacheKey] = reply;
+        // Bersihkan cache > 7 hari
+        const today = new Date();
+        Object.keys(cache).forEach((k) => {
+          const d = new Date(k.split("_").slice(2).join("_"));
+          if (!isNaN(d) && today - d > 7 * 86400000) delete cache[k];
+        });
+        localStorage.setItem(LS_AI_CACHE, JSON.stringify(cache));
+      } catch {}
+
+      el.innerHTML = `
+        <div class="story-text" style="font-size:13px">${reply.replace(/\n/g, "<br>")}</div>
+        <button class="story-regen-btn" style="margin-top:8px" onclick="WeeklyInsight.regenerateAI(${weeksAgo})">🔄 Generate ulang</button>`;
+    } catch (e) {
+      el.innerHTML = `
+        <div style="font-size:12px;color:var(--red);padding:8px">⚠️ Gagal generate. Cek koneksi & API key.</div>
+        <button class="story-regen-btn" onclick="WeeklyInsight.generateAI(${weeksAgo})">Coba lagi</button>`;
+      console.error("[AI Insight]", e);
+    }
+  }
+
+  async function regenerateAI(weeksAgo) {
+    // Hapus cache
+    try {
+      const cache = JSON.parse(localStorage.getItem(LS_AI_CACHE) || "{}");
+      const cacheKey = `week_${weeksAgo}_${new Date().toDateString()}`;
+      delete cache[cacheKey];
+      localStorage.setItem(LS_AI_CACHE, JSON.stringify(cache));
+    } catch {}
+    await generateAI(weeksAgo);
+  }
+
   function _switchTab(tabIdx, weeksAgo) {
     document.querySelectorAll(".insight-tab").forEach((t, i) => {
       t.classList.toggle("active", i === tabIdx);
@@ -439,5 +563,7 @@ const WeeklyInsight = (() => {
     openModal,
     closeModal,
     _switchTab,
+    generateAI,
+    regenerateAI,
   };
 })();

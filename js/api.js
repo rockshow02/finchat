@@ -24,13 +24,13 @@ const API = (() => {
     const { income, expense, transactions } = App.getFinancial();
     const balance = income - expense;
     const balColor = balance >= 0 ? "🟢" : "🔴";
-    Chat.appendMessage(
-      "bot",
+    const reply =
       `💰 **Saldo: ${balance < 0 ? "-" : ""}${fmt(balance)}** ${balColor}\n\n` +
-        `📥 Pemasukan: ${fmt(income)}\n` +
-        `📤 Pengeluaran: ${fmt(expense)}\n` +
-        `🧾 Total transaksi: ${transactions.length}`,
-    );
+      `📥 Pemasukan: ${fmt(income)}\n` +
+      `📤 Pengeluaran: ${fmt(expense)}\n` +
+      `🧾 Total transaksi: ${transactions.length}`;
+    Chat.appendMessage("bot", reply);
+    App.pushMessage({ role: "assistant", content: reply });
     TokenCounter.track(0, 0);
   }
 
@@ -55,10 +55,9 @@ const API = (() => {
       datasets: [{ label: "Pengeluaran", data: Object.values(cats) }],
     };
     App.setLastChart(chartData);
-    Chat.appendMessage(
-      "bot",
-      `📊 Ini grafik pengeluaranmu!\n<FC_CHART>${JSON.stringify(chartData)}</FC_CHART>`,
-    );
+    const chartReply = `📊 Ini grafik pengeluaranmu!\n<FC_CHART>${JSON.stringify(chartData)}</FC_CHART>`;
+    Chat.appendMessage("bot", chartReply);
+    App.pushMessage({ role: "assistant", content: chartReply });
     TokenCounter.track(0, 0);
   }
 
@@ -92,16 +91,16 @@ const API = (() => {
       )
       .join("\n");
 
-    Chat.appendMessage(
-      "bot",
+    const reply =
       `📋 **Laporan Keuangan**\n\n` +
-        `📥 Total Pemasukan: ${fmt(income)}\n` +
-        `📤 Total Pengeluaran: ${fmt(expense)}\n` +
-        `💰 Saldo: ${balance < 0 ? "-" : ""}${fmt(balance)}\n` +
-        `🧾 Jumlah Transaksi: ${transactions.length}\n\n` +
-        (catRows ? `**Pengeluaran per Kategori:**\n${catRows}\n\n` : "") +
-        `**5 Transaksi Terakhir:**\n${recent}`,
-    );
+      `📥 Total Pemasukan: ${fmt(income)}\n` +
+      `📤 Total Pengeluaran: ${fmt(expense)}\n` +
+      `💰 Saldo: ${balance < 0 ? "-" : ""}${fmt(balance)}\n` +
+      `🧾 Jumlah Transaksi: ${transactions.length}\n\n` +
+      (catRows ? `**Pengeluaran per Kategori:**\n${catRows}\n\n` : "") +
+      `**5 Transaksi Terakhir:**\n${recent}`;
+    Chat.appendMessage("bot", reply);
+    App.pushMessage({ role: "assistant", content: reply });
     TokenCounter.track(0, 0);
   }
 
@@ -138,6 +137,7 @@ const API = (() => {
     SpendingAlert.checkAfterTransaction(data.category);
     HealthScore.updateStreak();
     HealthScore.updateHeaderChip();
+    Achievements.check();
     TokenCounter.track(0, 0);
   }
 
@@ -160,6 +160,7 @@ const API = (() => {
     );
     HealthScore.updateStreak();
     HealthScore.updateHeaderChip();
+    Achievements.check();
     TokenCounter.track(0, 0);
   }
 
@@ -516,6 +517,26 @@ Balas dengan format:
   async function send(userText) {
     if (App.isLoading()) return;
 
+    // Cek savings goal dulu — "nabung menikah 500rb"
+    const goalMatch = SavingsGoals.parseFromChat(userText);
+    if (goalMatch) {
+      Chat.appendMessage("user", userText);
+      SavingsGoals.deposit(goalMatch.goalId, goalMatch.amount);
+      Chat.appendMessage(
+        "bot",
+        `💰 Setoran **${Chat.fmt(goalMatch.amount)}** dicatat ke tujuan **${goalMatch.goalName}**!\n\n` +
+          `Klik 🎯 di menu untuk lihat progress.`,
+      );
+      return;
+    }
+
+    // Cek monthly report command — "laporan bulan lalu"
+    if (MonthlyReport.handleChatCommand(userText)) {
+      Chat.appendMessage("user", userText);
+      return;
+    }
+
+    // Tampilkan pesan user
     Chat.appendMessage("user", userText);
 
     // Cek multi-transaksi DULU — sebelum parser lokal
@@ -535,15 +556,24 @@ Balas dengan format:
     const parsed = Parser.parse(userText);
 
     if (parsed) {
+      // Simpan pesan user ke history untuk semua handler lokal
+      App.pushMessage({ role: "user", content: userText });
       switch (parsed.intent) {
         case "saldo":
-          return _handleSaldo();
+          _handleSaldo();
+          App.save();
+          return;
         case "laporan":
-          return _handleLaporan();
+          _handleLaporan();
+          App.save();
+          return;
         case "grafik":
-          return _handleGrafik();
+          _handleGrafik();
+          App.save();
+          return;
         case "hapus_terakhir":
-          return _handleHapusTerakhir();
+          _handleHapusTerakhir();
+          return;
         case "error":
           Chat.appendMessage("bot", parsed.message);
           return;

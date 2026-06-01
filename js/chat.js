@@ -194,9 +194,27 @@ const Chat = (() => {
   function resetUI() {
     document.getElementById("chat").innerHTML = `
       <div class="empty-state" id="empty-state">
-        <div class="empty-icon">💰</div>
+        <div class="empty-icon">💬</div>
         <div class="empty-title">Halo! Aku FinChat</div>
         <div class="empty-sub">Ceritain aja keuanganmu, aku yang catat 👇</div>
+        <div class="empty-hints">
+          <div class="empty-hint" onclick="handleSendText('makan siang 45rb')">
+            <span class="hint-icon">🍜</span>
+            <div><div class="hint-label">Catat pengeluaran</div><div class="hint-example">"makan siang 45rb"</div></div>
+          </div>
+          <div class="empty-hint" onclick="handleSendText('gaji masuk 8 juta')">
+            <span class="hint-icon">💵</span>
+            <div><div class="hint-label">Catat pemasukan</div><div class="hint-example">"gaji masuk 8 juta"</div></div>
+          </div>
+          <div class="empty-hint" onclick="handleSendText('laporan')">
+            <span class="hint-icon">📊</span>
+            <div><div class="hint-label">Lihat laporan</div><div class="hint-example">ketik "laporan" atau "grafik"</div></div>
+          </div>
+          <div class="empty-hint" onclick="handleSendText('kasih saran hemat pengeluaran saya')">
+            <span class="hint-icon">🤖</span>
+            <div><div class="hint-label">Minta saran AI</div><div class="hint-example">"kasih saran hemat pengeluaran"</div></div>
+          </div>
+        </div>
       </div>`;
     updateSummary(0, 0);
   }

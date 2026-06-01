@@ -166,12 +166,12 @@ body {
 .avatar.bot { background: linear-gradient(135deg, var(--accent), #a78bfa); border: none; }
 
 .bubble {
-  max-width: min(75%, 420px);
+  max-width: min(82%, 480px);
   padding: 10px 13px; border-radius: var(--radius);
   font-size: clamp(13px, 3.5vw, 14px);
   line-height: 1.65; word-break: break-word;
 }
-.bubble.user { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.user { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; min-width: 200px; text-align: left; }
 .bubble.bot  {
   background: var(--surface2); color: var(--text);
   border: 1px solid var(--border2); border-bottom-left-radius: 4px;
@@ -263,10 +263,38 @@ textarea:focus         { border-color: var(--accent); }
   align-items: center; justify-content: center;
   gap: 6px; flex: 1; color: var(--muted2);
   text-align: center; padding: 30px 20px;
+  overflow-y: auto;
 }
 .empty-icon  { font-size: 36px; margin-bottom: 6px; }
-.empty-title { font-size: 15px; font-weight: 500; }
-.empty-sub   { font-size: 12px; color: var(--muted); }
+.empty-title { font-size: 15px; font-weight: 500; color: var(--text); }
+.empty-sub   { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+.empty-hints {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+}
+.empty-hint {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.empty-hint:hover {
+  border-color: var(--accent);
+  background: rgba(124,106,255,0.06);
+  transform: translateY(-1px);
+}
+.empty-hint:active { transform: translateY(0); }
+.hint-icon    { font-size: 22px; flex-shrink: 0; }
+.hint-label   { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+.hint-example { font-size: 11px; color: var(--muted2); font-style: italic; }
 
 /* ── Toast ───────────────────────────────────────────────── */
 .toast {
@@ -1274,3 +1302,224 @@ body.light .hamburger-menu { box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
 @media (max-width: 480px) {
   .nav-icon-btn { width: 28px; height: 28px; font-size: 14px; }
 }
+
+/* ── Achievement System ──────────────────────────────────── */
+.ach-modal {
+  max-width: 420px; max-height: 88dvh; overflow-y: auto;
+}
+.ach-modal::-webkit-scrollbar { width: 3px; }
+.ach-modal::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.ach-progress-wrap { margin-bottom: 18px; }
+.ach-progress-text {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted2); margin-bottom: 6px;
+}
+.ach-progress-bar-wrap {
+  height: 6px; background: var(--border2); border-radius: 3px;
+}
+.ach-progress-bar {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.6s ease;
+}
+
+.ach-category   { margin-bottom: 18px; }
+.ach-cat-label  {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.8px; font-weight: 600; margin-bottom: 8px;
+}
+
+.ach-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+
+.ach-card {
+  border-radius: 10px; padding: 10px 8px;
+  border: 1px solid var(--border2);
+  text-align: center;
+  transition: all 0.15s;
+}
+.ach-card.unlocked {
+  background: var(--surface2);
+  border-color: var(--accent);
+}
+.ach-card.locked {
+  background: var(--surface);
+  opacity: 0.5;
+}
+.ach-card.unlocked:hover { transform: scale(1.03); }
+
+.ach-card-icon  { font-size: 22px; margin-bottom: 4px; }
+.ach-card-title {
+  font-size: 11px; font-weight: 600; color: var(--text);
+  margin-bottom: 2px; line-height: 1.3;
+}
+.ach-card-desc  { font-size: 10px; color: var(--muted2); line-height: 1.4; }
+.ach-card-date  {
+  font-size: 9px; color: var(--accent2);
+  margin-top: 4px; font-family: 'JetBrains Mono', monospace;
+}
+
+/* Achievement unlock toast */
+.achievement-toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(30px);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 14px; padding: 12px 18px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 8px 24px rgba(124,106,255,0.4);
+  z-index: 999; opacity: 0;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none; white-space: nowrap;
+}
+.achievement-toast.show {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
+.ach-toast-icon  { font-size: 28px; }
+.ach-toast-label { font-size: 10px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; }
+.ach-toast-title { font-size: 14px; font-weight: 600; color: #fff; }
+
+/* ── Financial Story ─────────────────────────────────────── */
+.story-modal-wrap {
+  max-width: 420px; max-height: 88dvh; overflow-y: auto;
+}
+.story-modal-wrap::-webkit-scrollbar { width: 3px; }
+.story-modal-wrap::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.story-text {
+  font-size: 14px; line-height: 1.8; color: var(--text);
+  background: var(--surface2); border-radius: 12px;
+  padding: 16px; border-left: 3px solid var(--accent);
+  margin-bottom: 14px;
+}
+
+.story-cached {
+  font-size: 11px; color: var(--muted);
+  text-align: center; margin-bottom: 10px;
+}
+
+.story-mini-summary {
+  display: flex; gap: 8px;
+  margin-bottom: 14px;
+}
+.story-stat {
+  flex: 1; background: var(--surface2);
+  border-radius: 8px; padding: 8px 10px;
+  border: 1px solid var(--border); text-align: center;
+}
+.story-stat-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+.story-stat-value {
+  font-size: 12px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.story-stat-value.green { color: var(--green); }
+.story-stat-value.red   { color: var(--red);   }
+.story-stat-value.amber { color: var(--amber);  }
+
+.story-regen-btn {
+  width: 100%; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--muted2); font-family: 'Sora', sans-serif;
+  font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.story-regen-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+/* Loading dots */
+.story-loading {
+  text-align: center; padding: 30px 0;
+}
+.story-loading-dots {
+  display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;
+}
+.story-loading-dots span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); animation: bounce 1.2s infinite;
+}
+.story-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.story-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Savings Goals ───────────────────────────────────────── */
+.goals-modal-wrap {
+  max-width: 420px; max-height: 88dvh; overflow-y: auto;
+}
+.goals-modal-wrap::-webkit-scrollbar { width: 3px; }
+.goals-modal-wrap::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.goal-card {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 14px; margin-bottom: 12px;
+}
+.goal-card.goal-done { border-color: rgba(52,211,153,0.4); }
+
+.goal-header  { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.goal-name    { font-size: 14px; font-weight: 600; color: var(--text); }
+.goal-target-text { font-size: 11px; color: var(--muted2); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.goal-pct     { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+.goal-bar-wrap { height: 6px; background: var(--border2); border-radius: 3px; margin-bottom: 8px; }
+.goal-bar      { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+.goal-meta {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--muted2); margin-bottom: 10px;
+}
+.goal-meta strong { color: var(--text); }
+
+.goal-deposit-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.goal-deposit-input { flex: 1; }
+
+.goal-history { margin-top: 4px; }
+.goal-history summary { list-style: none; }
+.goal-history summary::-webkit-details-marker { display: none; }
+
+.goal-delete-btn {
+  width: 100%; margin-top: 8px; padding: 6px;
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--muted); font-size: 12px;
+  font-family: 'Sora', sans-serif; cursor: pointer; transition: all 0.15s;
+}
+.goal-delete-btn:hover { border-color: var(--red); color: var(--red); }
+
+.goals-form {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 14px; margin-bottom: 10px;
+}
+.goals-add-btn {
+  width: 100%; padding: 12px; border-radius: 10px;
+  border: 1px dashed var(--border2); background: transparent;
+  color: var(--muted2); font-family: 'Sora', sans-serif;
+  font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.goals-add-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+/* ── Push Notification ───────────────────────────────────── */
+.notif-status-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 4px;
+}
+.notif-status-card.active { border-color: rgba(52,211,153,0.4); }
+
+.notif-unsupported { text-align: center; padding: 20px 0; }
+
+/* Toggle switch */
+.notif-switch {
+  position: relative; display: inline-block;
+  width: 44px; height: 24px; flex-shrink: 0;
+}
+.notif-switch input { opacity: 0; width: 0; height: 0; }
+.notif-slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--border2); border-radius: 24px;
+  transition: background 0.2s;
+}
+.notif-slider::before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; left: 3px; top: 3px;
+  transition: transform 0.2s;
+}
+.notif-switch input:checked + .notif-slider { background: var(--green); }
+.notif-switch input:checked + .notif-slider::before { transform: translateX(20px); }

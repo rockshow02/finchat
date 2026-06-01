@@ -85,6 +85,7 @@
           <span class="alert-badge" id="alert-badge" style="display:none">0</span>
         </button>
         <span class="theme-icon" id="theme-icon">🌙</span>
+        <button class="theme-toggle" id="theme-toggle" onclick="Theme.toggle()" title="Ganti tema"></button>
         <!-- Hamburger -->
         <button class="hamburger-btn" id="hamburger-btn" onclick="HamburgerMenu.toggle()" title="Menu">
           <span></span><span></span><span></span>
@@ -96,12 +97,26 @@
     <!-- Hamburger Dropdown Menu -->
     <div class="hamburger-menu" id="hamburger-menu">
       <div class="hm-section">
+        <div class="hm-label">Saya</div>
+        <button class="hm-item" onclick="Achievements.openModal();HamburgerMenu.close()">
+          <span class="hm-icon">🏅</span><span>Achievements</span>
+        </button>
+        <button class="hm-item" onclick="SavingsGoals.openModal();HamburgerMenu.close()">
+          <span class="hm-icon">🎯</span><span>Target Tabungan</span>
+        </button>
+        <button class="hm-item" onclick="FinancialStory.openModal();HamburgerMenu.close()">
+          <span class="hm-icon">📖</span><span>Financial Story</span>
+          <span style="margin-left:auto;font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px">PRO</span>
+        </button>
+      </div>
+      <div class="hm-divider"></div>
+      <div class="hm-section">
         <div class="hm-label">Pengaturan</div>
         <button class="hm-item" onclick="PIN.openSetup();HamburgerMenu.close()">
           <span class="hm-icon">🔐</span><span>Atur PIN</span>
         </button>
-        <button class="hm-item" onclick="Theme.toggle();HamburgerMenu.close()">
-          <span class="hm-icon" id="hm-theme-icon">🌙</span><span id="hm-theme-label">Mode Terang</span>
+        <button class="hm-item" onclick="PushNotif.openSettings();HamburgerMenu.close()">
+          <span class="hm-icon">🔔</span><span>Notifikasi</span>
         </button>
       </div>
       <div class="hm-divider"></div>
@@ -160,7 +175,7 @@
       <div class="empty-state" id="empty-state">
         <div class="empty-icon">💬</div>
         <div class="empty-title">Halo! Aku FinChat</div>
-        <div class="empty-sub">Asisten keuangan pribadimu yang selalu siap mencatat</div>
+        <div class="empty-sub">Ceritain aja keuanganmu, aku yang catat 👇</div>
         <div class="empty-hints">
           <div class="empty-hint" onclick="handleSendText('makan siang 45rb')">
             <span class="hint-icon">🍜</span>
@@ -333,6 +348,57 @@
         <button onclick="HealthScore.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
       </div>
       <div id="hs-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ── Notification Settings Modal ──────────────────────────── -->
+  <div class="modal-overlay" id="notif-modal">
+    <div class="modal" style="max-width:360px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="modal-title" style="margin:0">🔔 Notifikasi</div>
+        <button onclick="PushNotif.closeSettings()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="notif-settings-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Savings Goals Modal ───────────────────────────────────── -->
+  <div class="modal-overlay" id="goals-modal">
+    <div class="modal goals-modal-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="modal-title" style="margin:0">🎯 Target Tabungan</div>
+        <button onclick="SavingsGoals.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="goals-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Financial Story Modal ────────────────────────────────── -->
+  <div class="modal-overlay" id="story-modal">
+    <div class="modal story-modal-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div>
+          <div class="modal-title" style="margin:0">📖 Financial Story</div>
+          <div style="font-size:11px;color:var(--accent2);margin-top:2px">✨ Premium Feature</div>
+        </div>
+        <button onclick="FinancialStory.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div class="insight-tabs" style="margin-bottom:14px">
+        <button class="story-tab insight-tab" data-period="week"  onclick="FinancialStory.switchPeriod('week')">Minggu ini</button>
+        <button class="story-tab insight-tab active" data-period="month" onclick="FinancialStory.switchPeriod('month')">Bulan ini</button>
+      </div>
+      <div id="story-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Achievement Modal ────────────────────────────────────── -->
+  <div class="modal-overlay" id="achievement-modal">
+    <div class="modal ach-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="modal-title" style="margin:0">🏅 Achievements</div>
+        <button onclick="Achievements.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="ach-body"></div>
     </div>
   </div>
 
@@ -541,9 +607,14 @@
   <script src="js/chat.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/parser.js"></script>  <!-- hybrid parser -->
-  <script src="js/health-score.js"></script>    <!-- financial health score -->
-  <script src="js/weekly-insight.js"></script>   <!-- weekly insight -->
-  <script src="js/spending-alert.js"></script>   <!-- spending alert -->
+  <script src="js/health-score.js"></script>
+  <script src="js/weekly-insight.js"></script>
+  <script src="js/spending-alert.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/savings-goals.js"></script>
+  <script src="js/financial-story.js"></script>
+  <script src="js/push-notification.js"></script>
+  <script src="js/monthly-report.js"></script>
   <script src="js/api.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/features.js"></script>
@@ -557,10 +628,6 @@
         document.getElementById('hamburger-menu').classList.add('open');
         document.getElementById('hamburger-overlay').classList.add('open');
         document.getElementById('hamburger-btn').classList.add('open');
-        // Sync theme label
-        const isLight = document.body.classList.contains('light');
-        document.getElementById('hm-theme-icon').textContent  = isLight ? '🌙' : '☀️';
-        document.getElementById('hm-theme-label').textContent = isLight ? 'Mode Gelap' : 'Mode Terang';
       },
       close() {
         document.getElementById('hamburger-menu').classList.remove('open');

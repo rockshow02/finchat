@@ -137,3 +137,41 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
+
+// ── Handle notifikasi dari halaman ────────────────────────
+self.addEventListener("message", (event) => {
+  if (event.data === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === "SHOW_NOTIFICATION") {
+    const { title, body, icon, badge, tag, data } = event.data;
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge,
+      tag,
+      data,
+      vibrate: [200, 100, 200],
+    });
+  }
+});
+
+// ── Klik notifikasi → buka app ────────────────────────────
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Kalau app sudah terbuka → focus
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            return client.focus();
+          }
+        }
+        // Kalau belum → buka baru
+        if (clients.openWindow) return clients.openWindow("/");
+      }),
+  );
+});

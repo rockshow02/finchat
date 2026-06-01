@@ -61,6 +61,8 @@ const PIN = (() => {
     HealthScore.updateHeaderChip();
     WeeklyInsight.checkAutoShow();
     SpendingAlert.init();
+    PushNotif.init();
+    MonthlyReport.checkAutoShow();
   }
 
   function _updateDots(id, count) {

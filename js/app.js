@@ -47,6 +47,17 @@ const App = (() => {
     localStorage.removeItem(CONFIG.LS_FINANCIAL);
     localStorage.removeItem(CONFIG.LS_MESSAGES);
     localStorage.removeItem(CONFIG.LS_CHART);
+    localStorage.removeItem("finchat_story_cache");
+    localStorage.removeItem("finchat_ai_insight_cache");
+    localStorage.removeItem("finchat_achievements");
+    localStorage.removeItem("finchat_tokens");
+    localStorage.removeItem("finchat_streak");
+    localStorage.removeItem("finchat_alerts_dismissed");
+    localStorage.removeItem("finchat_budgets");
+    localStorage.removeItem("finchat_exported");
+    localStorage.removeItem("finchat_goals");
+    localStorage.removeItem("finchat_last_monthly_report");
+    localStorage.removeItem("finchat_last_insight");
     state.messages = [];
     state.financialState = { income: 0, expense: 0, transactions: [] };
     state.lastChartData = null;
