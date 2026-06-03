@@ -45,10 +45,11 @@ const Confirm = (() => {
   function reject() {
     document.getElementById("confirm-tx-modal").classList.remove("open");
     _pending = null;
-    Chat.appendMessage(
-      "bot",
-      "↩️ Oke, transaksi dibatalkan. Ketik ulang kalau mau catat yang lain ya!",
-    );
+    const reply =
+      "↩️ Oke, transaksi dibatalkan. Ketik ulang kalau mau catat yang lain ya!";
+    Chat.appendMessage("bot", reply);
+    App.pushMessage({ role: "assistant", content: reply });
+    App.save();
   }
 
   function edit() {

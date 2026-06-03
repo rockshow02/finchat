@@ -56,31 +56,33 @@ const Chat = (() => {
 
   // ── Append Message ─────────────────────────────────────────
   function appendMessage(role, rawText, skipChart = false) {
+    // Normalize role — 'assistant' → 'bot'
+    const r = role === "assistant" ? "bot" : role;
     hideEmpty();
     const chatEl = document.getElementById("chat");
 
     const wrap = document.createElement("div");
-    wrap.className = "msg-wrap" + (role === "user" ? " user" : "");
+    wrap.className = "msg-wrap" + (r === "user" ? " user" : "");
 
     const avatar = document.createElement("div");
-    avatar.className = "avatar " + (role === "user" ? "user" : "bot");
-    avatar.textContent = role === "user" ? "👤" : "💬";
+    avatar.className = "avatar " + (r === "user" ? "user" : "bot");
+    avatar.textContent = r === "user" ? "👤" : "💬";
 
     const msgCol = document.createElement("div");
     msgCol.style.cssText =
-      "display:flex;flex-direction:column;gap:8px;min-width:0;max-width:min(75%,420px)";
+      "display:flex;flex-direction:column;gap:8px;min-width:0;max-width:min(82%,480px)";
 
     // Text bubble
     const text = cleanText(rawText);
     if (text) {
       const bubble = document.createElement("div");
-      bubble.className = "bubble " + role;
+      bubble.className = "bubble " + r;
       bubble.innerHTML = formatBubble(text);
       msgCol.appendChild(bubble);
     }
 
     // Chart bubble (bot only, unless skipped for history restore)
-    if (role === "bot" && !skipChart) {
+    if (r === "bot" && !skipChart) {
       const chartData =
         parseTag("FC_CHART", rawText) || parseTag("FINCHAT_CHART", rawText);
       if (chartData) {
@@ -96,7 +98,7 @@ const Chat = (() => {
     ts.textContent = getTime();
     msgCol.appendChild(ts);
 
-    if (role === "user") {
+    if (r === "user") {
       wrap.appendChild(msgCol);
       wrap.appendChild(avatar);
     } else {
@@ -117,27 +119,16 @@ const Chat = (() => {
     const lastChart = App.getLastChart();
 
     messages.forEach((m, idx) => {
+      // Normalize role: 'assistant' → 'bot'
+      const role = m.role === "assistant" ? "bot" : m.role;
       const isLast = idx === messages.length - 1;
-      // Only render chart for the last bot message that had one
-      const skipChart = !(
-        m.role === "bot" &&
-        isLast &&
-        m.content.includes("<FINCHAT_CHART>")
-      );
-      appendMessage(m.role, m.content, skipChart ? true : false);
+      const hasChart =
+        m.content &&
+        (m.content.includes("<FC_CHART>") ||
+          m.content.includes("<FINCHAT_CHART>"));
+      const skipChart = !(role === "bot" && isLast && hasChart);
+      appendMessage(role, m.content, skipChart);
     });
-
-    // If last message had chart, render it
-    if (lastChart) {
-      const last = messages[messages.length - 1];
-      if (
-        last &&
-        last.role === "bot" &&
-        last.content.includes("<FINCHAT_CHART>")
-      ) {
-        // already rendered above via skipChart=false path
-      }
-    }
 
     const chatEl = document.getElementById("chat");
     chatEl.scrollTop = chatEl.scrollHeight;

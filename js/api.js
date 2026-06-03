@@ -126,13 +126,13 @@ const API = (() => {
       transactions: fin.transactions,
     });
     Chat.updateSummary(fin.income, fin.expense);
-    App.save();
-    Chat.appendMessage(
-      "bot",
+    const reply =
       `✅ Dicatat! **${data.label}** — ${fmt(data.amount)}\n` +
-        `🏷️ Kategori: ${data.category} • 📅 ${data.date}\n\n` +
-        `📤 Total pengeluaran: ${fmt(fin.expense)} | 💰 Saldo: ${fmt(fin.income - fin.expense)}`,
-    );
+      `🏷️ Kategori: ${data.category} • 📅 ${data.date}\n\n` +
+      `📤 Total pengeluaran: ${fmt(fin.expense)} | 💰 Saldo: ${fmt(fin.income - fin.expense)}`;
+    Chat.appendMessage("bot", reply);
+    App.pushMessage({ role: "assistant", content: reply });
+    App.save();
     Budget.checkAlert(data.category);
     SpendingAlert.checkAfterTransaction(data.category);
     HealthScore.updateStreak();
@@ -151,13 +151,13 @@ const API = (() => {
       transactions: fin.transactions,
     });
     Chat.updateSummary(fin.income, fin.expense);
-    App.save();
-    Chat.appendMessage(
-      "bot",
+    const reply =
       `✅ Dicatat! **${data.label}** — ${fmt(data.amount)}\n` +
-        `🏷️ Kategori: ${data.category} • 📅 ${data.date}\n\n` +
-        `📥 Total pemasukan: ${fmt(fin.income)} | 💰 Saldo: ${fmt(fin.income - fin.expense)}`,
-    );
+      `🏷️ Kategori: ${data.category} • 📅 ${data.date}\n\n` +
+      `📥 Total pemasukan: ${fmt(fin.income)} | 💰 Saldo: ${fmt(fin.income - fin.expense)}`;
+    Chat.appendMessage("bot", reply);
+    App.pushMessage({ role: "assistant", content: reply });
+    App.save();
     HealthScore.updateStreak();
     HealthScore.updateHeaderChip();
     Achievements.check();
@@ -532,7 +532,6 @@ Balas dengan format:
 
     // Cek monthly report command — "laporan bulan lalu"
     if (MonthlyReport.handleChatCommand(userText)) {
-      Chat.appendMessage("user", userText);
       return;
     }
 

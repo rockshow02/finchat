@@ -108,6 +108,10 @@
           <span class="hm-icon">📖</span><span>Financial Story</span>
           <span style="margin-left:auto;font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px">PRO</span>
         </button>
+        <button class="hm-item" onclick="AdvancedAnalytics.openModal();HamburgerMenu.close()">
+          <span class="hm-icon">📈</span><span>Advanced Analytics</span>
+          <span style="margin-left:auto;font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px">PRO</span>
+        </button>
       </div>
       <div class="hm-divider"></div>
       <div class="hm-section">
@@ -143,6 +147,10 @@
         </button>
         <button class="hm-item" onclick="Features.openBackup();HamburgerMenu.close()">
           <span class="hm-icon">💾</span><span>Backup & Restore</span>
+        </button>
+        <button class="hm-item" onclick="CloudBackup.openModal();HamburgerMenu.close()">
+          <span class="hm-icon">☁️</span><span>Cloud Backup</span>
+          <span style="margin-left:auto;font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px">PRO</span>
         </button>
       </div>
       <div class="hm-divider"></div>
@@ -223,7 +231,12 @@
     <div class="input-area">
       <div class="input-row">
         <textarea id="input" placeholder='Contoh: "Makan siang 45rb" atau "Gaji masuk 8 juta"'
-          rows="1" onkeydown="handleKey(event)" oninput="Chat.autoResize(this)"></textarea>
+          rows="1" onkeydown="handleKey(event)" oninput="Chat.autoResize(this)"
+          onpaste="OCRScan.handlePaste(event)"></textarea>
+        <button id="voice-btn" class="voice-btn" onclick="VoiceInput.start()"
+          title="Voice input" style="display:none">🎤</button>
+        <button class="voice-btn" onclick="OCRScan.openPicker()"
+          title="Scan struk ✨ PRO" id="ocr-btn">📷</button>
         <button class="send-btn" id="send-btn" onclick="handleSend()">➤</button>
       </div>
     </div>
@@ -329,6 +342,20 @@
     </div>
   </div>
 
+  <!-- ── Cloud Backup Modal ────────────────────────────────────── -->
+  <div class="modal-overlay" id="cloud-backup-modal">
+    <div class="modal" style="max-width:360px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div>
+          <div class="modal-title" style="margin:0">☁️ Cloud Backup</div>
+          <div style="font-size:11px;color:var(--accent2);margin-top:2px">✨ Premium • Google Drive</div>
+        </div>
+        <button onclick="CloudBackup.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+      <div id="cloud-backup-body"></div>
+    </div>
+  </div>
+
   <!-- ── Weekly Insight Modal ────────────────────────────────── -->
   <div class="modal-overlay" id="insight-modal">
     <div class="modal insight-modal-wrap">
@@ -348,6 +375,52 @@
         <button onclick="HealthScore.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
       </div>
       <div id="hs-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ── Advanced Analytics Modal ─────────────────────────────── -->
+  <div class="modal-overlay" id="analytics-modal">
+    <div class="modal analytics-modal-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div>
+          <div class="modal-title" style="margin:0">📈 Advanced Analytics</div>
+          <div style="font-size:11px;color:var(--accent2);margin-top:2px">✨ Premium Feature</div>
+        </div>
+        <button onclick="AdvancedAnalytics.closeModal()" style="background:transparent;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+      </div>
+
+      <!-- Stats cards -->
+      <div id="analytics-stats" style="margin-bottom:16px"></div>
+
+      <!-- Tabs -->
+      <div class="insight-tabs" style="margin-bottom:12px">
+        <button class="analytics-tab insight-tab active" data-tab="trend"
+          onclick="AdvancedAnalytics.switchTab('trend')">📈 Tren</button>
+        <button class="analytics-tab insight-tab" data-tab="compare"
+          onclick="AdvancedAnalytics.switchTab('compare')">📊 Perbandingan</button>
+        <button class="analytics-tab insight-tab" data-tab="breakdown"
+          onclick="AdvancedAnalytics.switchTab('breakdown')">🏷️ Kategori</button>
+      </div>
+
+      <!-- Panels -->
+      <div class="analytics-panel" data-panel="trend">
+        <div style="height:240px;position:relative">
+          <canvas id="chart-trend"></canvas>
+        </div>
+        <div style="font-size:11px;color:var(--muted2);text-align:center;margin-top:8px">Tren 12 bulan terakhir</div>
+      </div>
+
+      <div class="analytics-panel" data-panel="compare" style="display:none">
+        <div style="height:240px;position:relative">
+          <canvas id="chart-compare"></canvas>
+        </div>
+        <div style="font-size:11px;color:var(--muted2);text-align:center;margin-top:8px">6 bulan terakhir</div>
+      </div>
+
+      <div class="analytics-panel" data-panel="breakdown" style="display:none">
+        <div id="breakdown-body"></div>
+      </div>
+
     </div>
   </div>
 
@@ -407,6 +480,7 @@
     <div class="modal">
       <div class="modal-title">📤 Export Laporan</div>
       <div class="modal-sub">Pilih format export laporan keuanganmu</div>
+      <div id="pdf-quota-info" style="font-size:12px;color:var(--muted2);text-align:center;margin:8px 0;padding:8px;background:var(--surface2);border-radius:8px"></div>
       <div class="modal-btns">
         <button class="modal-btn excel"   onclick="Exporter.toExcel()">📗 Excel</button>
         <button class="modal-btn pdf-btn" onclick="Exporter.toPDF()">📄 PDF</button>
@@ -615,6 +689,10 @@
   <script src="js/financial-story.js"></script>
   <script src="js/push-notification.js"></script>
   <script src="js/monthly-report.js"></script>
+  <script src="js/voice-input.js"></script>
+  <script src="js/ocr-scan.js"></script>
+  <script src="js/advanced-analytics.js"></script>
+  <script src="js/cloud-backup.js"></script>
   <script src="js/api.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/features.js"></script>

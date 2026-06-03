@@ -181,47 +181,99 @@ const MonthlyReport = (() => {
   }
 
   // ── Generate manual untuk bulan tertentu ─────────────────
-  function generate(monthsAgo = 1) {
+  function generate(monthsAgo = 1, specificMonth = null) {
     const now = new Date();
-    let month = now.getMonth() - monthsAgo;
-    let year = now.getFullYear();
-    while (month < 0) {
-      month += 12;
-      year--;
+    let month, year;
+
+    if (specificMonth !== null) {
+      month = specificMonth;
+      // Kalau bulan target > bulan sekarang, berarti tahun lalu
+      year =
+        specificMonth > now.getMonth()
+          ? now.getFullYear() - 1
+          : now.getFullYear();
+    } else {
+      month = now.getMonth() - monthsAgo;
+      year = now.getFullYear();
+      while (month < 0) {
+        month += 12;
+        year--;
+      }
     }
 
     const { transactions } = App.getFinancial();
     const data = _calcMonth(transactions, year, month);
     const label = BULAN_NAMES[month];
 
+    let reply;
     if (data.count === 0) {
-      Chat.appendMessage(
-        "bot",
-        `📅 Tidak ada transaksi di bulan ${label} ${year}.`,
-      );
-      return;
+      reply = `📅 Tidak ada transaksi di bulan ${label} ${year}.`;
+    } else {
+      reply = _buildReport(data, label, year);
     }
 
-    const report = _buildReport(data, label, year);
-    if (report) Chat.appendMessage("bot", report);
+    if (reply) {
+      Chat.appendMessage("bot", reply);
+      App.pushMessage({ role: "assistant", content: reply });
+      App.save();
+    }
   }
 
-  // ── Expose generate ke parser (ketik "laporan bulan lalu") ─
+  // ── Handle chat command ───────────────────────────────────
   function handleChatCommand(text) {
     const lower = text.toLowerCase();
-    if (/laporan\s+(bulan\s+lalu|kemarin|kemaren)/.test(lower)) {
-      generate(1);
-      return true;
+
+    // Harus ada kata laporan/rekap
+    if (!/\b(laporan|rekap)\b/.test(lower)) return false;
+
+    const BULAN_IDX = {
+      januari: 0,
+      februari: 1,
+      maret: 2,
+      april: 3,
+      mei: 4,
+      juni: 5,
+      juli: 6,
+      agustus: 7,
+      september: 8,
+      oktober: 9,
+      november: 10,
+      desember: 11,
+      jan: 0,
+      feb: 1,
+      mar: 2,
+      apr: 3,
+      jun: 5,
+      jul: 6,
+      agu: 7,
+      sep: 8,
+      okt: 9,
+      nov: 10,
+      des: 11,
+    };
+
+    // Handle nama bulan spesifik — "laporan april", "laporan bulan mei"
+    for (const [name, idx] of Object.entries(BULAN_IDX)) {
+      if (new RegExp(`\\b${name}\\b`).test(lower)) {
+        Chat.appendMessage("user", text);
+        App.pushMessage({ role: "user", content: text });
+        setTimeout(() => generate(null, idx), 100);
+        return true;
+      }
     }
-    if (/laporan\s+2\s+bulan/.test(lower)) {
-      generate(2);
-      return true;
-    }
-    if (/laporan\s+bulanan/.test(lower)) {
-      generate(1);
-      return true;
-    }
-    return false;
+
+    // Handle relatif
+    let monthsAgo = null;
+    if (/laporan\s+(bulan\s+lalu|kemarin|kemaren)/.test(lower)) monthsAgo = 1;
+    else if (/laporan\s+2\s+bulan/.test(lower)) monthsAgo = 2;
+    else if (/laporan\s+bulanan/.test(lower)) monthsAgo = 1;
+
+    if (monthsAgo === null) return false;
+
+    Chat.appendMessage("user", text);
+    App.pushMessage({ role: "user", content: text });
+    setTimeout(() => generate(monthsAgo), 100);
+    return true;
   }
 
   return { checkAutoShow, generate, handleChatCommand };

@@ -7,6 +7,24 @@ const Exporter = (() => {
   // ── Modal ──────────────────────────────────────────────────
   function openModal() {
     document.getElementById("export-modal").classList.add("open");
+    // Tampilkan info kuota PDF
+    const quotaEl = document.getElementById("pdf-quota-info");
+    if (quotaEl) {
+      if (Features.isPremium()) {
+        quotaEl.innerHTML = "✨ Premium — Export PDF unlimited";
+        quotaEl.style.color = "var(--green)";
+      } else {
+        const { count } = _getPDFUsage();
+        const sisa = PDF_LIMIT - count;
+        if (sisa <= 0) {
+          quotaEl.innerHTML = `🔒 Limit PDF bulan ini tercapai (${PDF_LIMIT}/${PDF_LIMIT}). Upgrade untuk unlimited.`;
+          quotaEl.style.color = "var(--red)";
+        } else {
+          quotaEl.innerHTML = `📄 Sisa export PDF bulan ini: <strong>${sisa}x</strong> dari ${PDF_LIMIT}x`;
+          quotaEl.style.color = "var(--muted2)";
+        }
+      }
+    }
   }
   function closeModal() {
     document.getElementById("export-modal").classList.remove("open");
@@ -130,8 +148,43 @@ const Exporter = (() => {
   }
 
   // ── PDF Export ─────────────────────────────────────────────
+  const PDF_LIMIT = 3;
+  const LS_PDF_COUNT = "finchat_pdf_count";
+
+  function _getPDFUsage() {
+    try {
+      const data = JSON.parse(localStorage.getItem(LS_PDF_COUNT) || "{}");
+      const now = new Date();
+      const key = `${now.getFullYear()}-${now.getMonth()}`;
+      return { count: data[key] || 0, key };
+    } catch {
+      return { count: 0, key: "" };
+    }
+  }
+
+  function _incrementPDFCount() {
+    try {
+      const { count, key } = _getPDFUsage();
+      const data = JSON.parse(localStorage.getItem(LS_PDF_COUNT) || "{}");
+      data[key] = count + 1;
+      localStorage.setItem(LS_PDF_COUNT, JSON.stringify(data));
+    } catch {}
+  }
+
   async function toPDF() {
     closeModal();
+
+    // Cek limit PDF untuk free user
+    if (!Features.isPremium()) {
+      const { count } = _getPDFUsage();
+      if (count >= PDF_LIMIT) {
+        Chat.showToast(
+          `🔒 Limit ${PDF_LIMIT}x export PDF/bulan tercapai. Upgrade ke Premium!`,
+        );
+        return;
+      }
+    }
+
     const { transactions, income, expense } = App.getFinancial();
 
     if (transactions.length === 0) {
@@ -227,7 +280,14 @@ const Exporter = (() => {
       }
 
       pdf.save(`FinChat_Laporan_${filestamp}.pdf`);
-      Chat.showToast("✅ PDF berhasil didownload!");
+      _incrementPDFCount();
+      if (!Features.isPremium()) {
+        const { count } = _getPDFUsage();
+        const sisa = PDF_LIMIT - count;
+        Chat.showToast(`✅ PDF berhasil! (sisa ${sisa}x bulan ini)`);
+      } else {
+        Chat.showToast("✅ PDF berhasil didownload!");
+      }
     } catch (e) {
       console.error("[FinChat] PDF error:", e);
       Chat.showToast("❌ Gagal membuat PDF, coba lagi.");

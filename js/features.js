@@ -63,6 +63,10 @@ const PIN = (() => {
     SpendingAlert.init();
     PushNotif.init();
     MonthlyReport.checkAutoShow();
+    // Tampilkan tombol voice hanya kalau browser support
+    if (VoiceInput.isSupported()) {
+      document.getElementById("voice-btn").style.display = "flex";
+    }
   }
 
   function _updateDots(id, count) {
@@ -267,37 +271,95 @@ const Features = (() => {
 
   function _renderCatList() {
     const cats = _loadCats();
+    const customCats = _getCustomCats();
     const el = document.getElementById("cat-list");
+    const premium = isPremium();
+    const limitHtml = !premium
+      ? `<div class="cat-limit-bar">
+          <span style="font-size:11px;color:var(--muted2)">
+            Kategori custom: <strong style="color:${customCats.length >= FREE_CAT_LIMIT ? "var(--red)" : "var(--text)"}">${customCats.length}/${FREE_CAT_LIMIT}</strong>
+          </span>
+          ${
+            customCats.length >= FREE_CAT_LIMIT
+              ? `<span style="font-size:10px;background:var(--accent);color:#fff;padding:1px 8px;border-radius:8px">Upgrade untuk unlimited</span>`
+              : ""
+          }
+        </div>`
+      : `<div class="cat-limit-bar"><span style="font-size:11px;color:var(--green)">✨ Premium — Unlimited kategori</span></div>`;
+
     if (cats.length === 0) {
       el.innerHTML =
+        limitHtml +
         '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px">Belum ada kategori</div>';
       return;
     }
-    el.innerHTML = cats
-      .map(
-        (c, i) => `
+
+    el.innerHTML =
+      limitHtml +
+      cats
+        .map(
+          (c, i) => `
       <div class="cat-item">
         <span class="cat-chip">🏷️ ${c}</span>
-        <button class="cat-del" onclick="Features.deleteCategory(${i})">✕</button>
+        ${
+          !DEFAULT_CATS.includes(c)
+            ? `<button class="cat-del" onclick="Features.deleteCategory(${i})">✕</button>`
+            : `<span style="font-size:10px;color:var(--muted);padding:2px 6px">default</span>`
+        }
       </div>`,
-      )
-      .join("");
+        )
+        .join("") +
+      `<div id="cat-upgrade-hint" style="display:none;margin-top:8px;font-size:12px;color:var(--accent2);text-align:center;padding:8px;background:rgba(124,106,255,0.08);border-radius:8px">
+        🔒 Limit tercapai. Upgrade ke Premium untuk kategori unlimited!
+      </div>`;
+  }
+
+  const FREE_CAT_LIMIT = 5;
+
+  function _getCustomCats() {
+    // Kategori custom = semua minus default
+    return _loadCats().filter((c) => !DEFAULT_CATS.includes(c));
+  }
+
+  function isPremium() {
+    // Untuk sekarang cek localStorage flag
+    // Nanti diganti dengan auth system
+    return localStorage.getItem("finchat_premium") === "1";
   }
 
   function addCategory() {
     const input = document.getElementById("cat-input");
     const name = input.value.trim();
     if (!name) return;
+
     const cats = _loadCats();
+    const customCats = _getCustomCats();
+
     if (cats.includes(name)) {
       Chat.showToast("⚠️ Kategori sudah ada");
       return;
     }
+
+    // Cek limit free user
+    if (!isPremium() && customCats.length >= FREE_CAT_LIMIT) {
+      Chat.showToast(`🔒 Free: maksimal ${FREE_CAT_LIMIT} kategori custom`);
+      _showUpgradeHint();
+      return;
+    }
+
     cats.push(name);
     _saveCats(cats);
     input.value = "";
     _renderCatList();
     Chat.showToast(`✅ Kategori "${name}" ditambahkan`);
+  }
+
+  function _showUpgradeHint() {
+    const hint = document.getElementById("cat-upgrade-hint");
+    if (hint) {
+      hint.style.display = "block";
+      setTimeout(() => (hint.style.display = "none"), 4000);
+    }
   }
 
   function deleteCategory(idx) {
@@ -413,5 +475,6 @@ const Features = (() => {
     closeBackup,
     backupJSON,
     restoreJSON,
+    isPremium,
   };
 })();
